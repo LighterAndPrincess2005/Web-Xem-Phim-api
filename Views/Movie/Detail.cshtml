@@ -1,0 +1,236 @@
+@model MovieDetailResponse
+@{
+    var movie = Model.Movie!;
+
+    string ImageUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return "https://via.placeholder.com/320x480/111827/D4AF37?text=LVDK";
+        if (url.StartsWith("http", StringComparison.OrdinalIgnoreCase)) return url;
+        return $"https://img.ophim.live/uploads/movies/{url.TrimStart('/')}";
+    }
+    ViewData["Title"] = movie.Name + " — LVDKMovie";
+}
+
+<style>
+.detail-hero {
+    position: relative;
+    min-height: 420px;
+    display: flex;
+    align-items: flex-end;
+    padding: 3rem 0 2rem;
+}
+.detail-backdrop {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center top;
+    filter: blur(40px) brightness(0.2);
+    transform: scale(1.1);
+}
+.detail-poster {
+    width: 180px;
+    min-width: 180px;
+    border-radius: 4px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+    border: 1px solid #222;
+}
+.tag {
+    display: inline-block;
+    border: 1px solid #333;
+    color: #888;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 3px 10px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+.tag:hover { border-color: var(--neon); color: var(--neon); }
+.btn-watch {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--neon);
+    color: #000;
+    font-family: 'Urbanist', sans-serif;
+    font-weight: 900;
+    font-size: 0.9rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 14px 32px;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    border-radius: 2px;
+    transition: opacity 0.2s;
+}
+.btn-watch:hover { opacity: 0.85; }
+.ep-btn {
+    display: inline-block;
+    padding: 6px 14px;
+    border: 1px solid #222;
+    color: #888;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    border-radius: 2px;
+    transition: all 0.2s;
+}
+.ep-btn:hover { border-color: var(--neon); color: var(--neon); }
+.server-tab {
+    padding: 8px 20px;
+    border: 1px solid #222;
+    background: transparent;
+    color: #666;
+    font-family: 'Urbanist', sans-serif;
+    font-weight: 700;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.2s;
+}
+.server-tab.active { border-color: var(--neon); color: var(--neon); }
+</style>
+
+<!-- HERO BACKDROP -->
+<section class="detail-hero">
+    <div class="detail-backdrop" style="background-image:url('@ImageUrl(movie.PosterUrl)')"></div>
+    <div style="max-width:1400px;margin:0 auto;padding:0 1.5rem;display:flex;gap:2.5rem;align-items:flex-end;position:relative;z-index:1;width:100%;">
+        <img class="detail-poster" src="@ImageUrl(movie.PosterUrl)" alt="@movie.Name"
+             onerror="this.src='@ImageUrl(movie.ThumbUrl)'" />
+        <div style="flex:1;">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;">
+                @if (!string.IsNullOrEmpty(movie.Quality))
+                {
+                    <span style="background:var(--neon);color:#000;font-size:0.65rem;font-weight:900;padding:3px 8px;letter-spacing:0.1em;">@movie.Quality</span>
+                }
+                @if (!string.IsNullOrEmpty(movie.Lang))
+                {
+                    <span style="border:1px solid #444;color:#888;font-size:0.65rem;font-weight:700;padding:3px 8px;letter-spacing:0.1em;">@movie.Lang</span>
+                }
+            </div>
+            <h1 style="font-size:clamp(1.8rem,4vw,3rem);font-weight:900;letter-spacing:-0.04em;line-height:1.1;margin-bottom:0.5rem;">@movie.Name</h1>
+            <p style="font-size:1rem;color:#666;margin-bottom:1.25rem;">@movie.OriginName • @movie.Year</p>
+
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.5rem;">
+                @foreach (var cat in movie.Category.Take(4))
+                {
+                    <a href="/Home/TheLoai/@cat.Slug" class="tag">@cat.Name</a>
+                }
+                @foreach (var c in movie.Country.Take(2))
+                {
+                    <a href="/Home/QuocGia/@c.Slug" class="tag">🌍 @c.Name</a>
+                }
+            </div>
+
+            @if (Model.Episodes.Any())
+            {
+                var firstEp = Model.Episodes.First().ServerData.FirstOrDefault();
+                <a href="/xem/@movie.Slug/@(firstEp?.Slug ?? "tap-1")" class="btn-watch">
+                    ▶ XEM NGAY
+                </a>
+            }
+
+            <div style="margin-top:1.25rem;display:flex;gap:2rem;">
+                @if (!string.IsNullOrEmpty(movie.Time))
+                {
+                    <div>
+                        <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;">Thời lượng</div>
+                        <div style="font-weight:700;font-size:0.9rem;">@movie.Time</div>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(movie.EpisodeCurrent))
+                {
+                    <div>
+                        <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;">Tập</div>
+                        <div style="font-weight:700;font-size:0.9rem;">@movie.EpisodeCurrent</div>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(movie.Status))
+                {
+                    <div>
+                        <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;">Trạng thái</div>
+                        <div style="font-weight:700;font-size:0.9rem;color:var(--neon);">@movie.Status</div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CONTENT -->
+<div style="max-width:1400px;margin:0 auto;padding:2rem 1.5rem;">
+
+    <!-- NỘI DUNG -->
+    @if (!string.IsNullOrEmpty(movie.Content))
+    {
+        <section style="margin-bottom:2.5rem;">
+            <h2 class="section-title" style="margin-bottom:1rem;">Nội <span>dung</span></h2>
+            <p style="color:#999;line-height:1.7;max-width:800px;font-size:0.95rem;">@Html.Raw(movie.Content)</p>
+        </section>
+    }
+
+    <!-- DANH SÁCH TẬP -->
+    @if (Model.Episodes.Any())
+    {
+        <section>
+            <h2 class="section-title" style="margin-bottom:1.25rem;">Danh Sách <span>Tập</span></h2>
+
+            <!-- Server tabs -->
+            <div style="display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap;" id="serverTabs">
+                @for (int i = 0; i < Model.Episodes.Count; i++)
+                {
+                    var s = Model.Episodes[i];
+                    <button class="server-tab @(i == 0 ? "active" : "")"
+                            onclick="showServer('@s.ServerName', this)">
+                        @s.ServerName
+                    </button>
+                }
+            </div>
+
+            <!-- Episode lists per server -->
+            @foreach (var server in Model.Episodes)
+            {
+                <div id="server-@server.ServerName.Replace(" ", "_")"
+                     class="ep-list"
+                     style="display:@(server == Model.Episodes.First() ? "flex" : "none");flex-wrap:wrap;gap:8px;">
+                    @foreach (var ep in server.ServerData)
+                    {
+                        <a href="/xem/@movie.Slug/@ep.Slug?server=@Uri.EscapeDataString(server.ServerName)"
+                           class="ep-btn">@ep.Name</a>
+                    }
+                </div>
+            }
+        </section>
+    }
+
+    <!-- CAST -->
+    @if (movie.Actor.Any())
+    {
+        <section style="margin-top:2.5rem;">
+            <h2 class="section-title" style="margin-bottom:1rem;">Diễn <span>viên</span></h2>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                @foreach (var actor in movie.Actor.Take(12))
+                {
+                    <span style="border:1px solid #1a1a1a;padding:6px 14px;font-size:0.8rem;color:#888;border-radius:2px;">@actor</span>
+                }
+            </div>
+        </section>
+    }
+</div>
+
+@section Scripts {
+<script>
+function showServer(name, btn) {
+    document.querySelectorAll('.ep-list').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.server-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('server-' + name.replace(/ /g,'_')).style.display = 'flex';
+}
+</script>
+}

@@ -1,0 +1,445 @@
+@model WatchViewModel
+@{
+    ViewData["Title"] = $"{Model.Movie.Name} - {Model.CurrentEpisode} | LVDKMovie";
+    var useEmbedPlayer = !string.IsNullOrEmpty(Model.EmbedUrl) &&
+        Model.EmbedUrl.Contains("player.phimapi.com", StringComparison.OrdinalIgnoreCase);
+
+    string ImageUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return "https://via.placeholder.com/160x240/111827/D4AF37?text=LVDK";
+        if (url.StartsWith("http", StringComparison.OrdinalIgnoreCase)) return url;
+        return $"https://img.ophim.live/uploads/movies/{url.TrimStart('/')}";
+    }
+}
+
+<style>
+.player-wrap {
+    background: #000;
+    position: relative;
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+}
+.player-wrap iframe {
+    width: 100%;
+    aspect-ratio: 16/9;
+    border: none;
+    display: block;
+}
+.player-wrap video {
+    width: 100%;
+    aspect-ratio: 16/9;
+    border: none;
+    display: block;
+    background: #000;
+}
+.ai-voice-bar {
+    max-width: 1100px;
+    margin: 0 auto;
+    border: 1px solid #111;
+    border-top: none;
+    background: #080808;
+    padding: 0.8rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+.ai-voice-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    color: #ddd;
+    font-size: 0.85rem;
+    font-weight: 800;
+    cursor: pointer;
+    user-select: none;
+}
+.ai-voice-toggle input { display: none; }
+.ai-voice-switch {
+    width: 44px;
+    height: 24px;
+    border: 1px solid #333;
+    border-radius: 999px;
+    background: #171717;
+    position: relative;
+    transition: all 0.2s;
+}
+.ai-voice-switch::after {
+    content: "";
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #777;
+    position: absolute;
+    top: 2px;
+    left: 3px;
+    transition: all 0.2s;
+}
+.ai-voice-toggle input:checked + .ai-voice-switch {
+    border-color: var(--neon);
+    background: rgba(222,255,154,0.14);
+}
+.ai-voice-toggle input:checked + .ai-voice-switch::after {
+    left: 21px;
+    background: var(--neon);
+}
+.ai-voice-status {
+    color: var(--muted);
+    font-size: 0.78rem;
+}
+.ep-btn-active {
+    border-color: var(--neon) !important;
+    color: var(--neon) !important;
+    background: rgba(222,255,154,0.07);
+}
+.server-tab { padding:8px 20px;border:1px solid #222;background:transparent;color:#666;font-family:'Urbanist',sans-serif;font-weight:700;font-size:0.78rem;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;border-radius:2px;transition:all 0.2s; }
+.server-tab.active { border-color:var(--neon);color:var(--neon); }
+.ep-btn { display:inline-block;padding:6px 14px;border:1px solid #222;color:#888;font-size:0.78rem;font-weight:700;cursor:pointer;text-decoration:none;border-radius:2px;transition:all 0.2s; }
+.ep-btn:hover { border-color:var(--neon);color:var(--neon); }
+</style>
+
+<div style="background:#050505;padding:1rem 0;border-bottom:1px solid #111;">
+    <div style="max-width:1400px;margin:0 auto;padding:0 1.5rem;display:flex;align-items:center;gap:0.5rem;font-size:0.78rem;color:var(--muted);">
+        <a href="/" style="color:var(--muted);text-decoration:none;" onmouseover="this.style.color='var(--neon)'" onmouseout="this.style.color='var(--muted)'">Trang chủ</a>
+        <span>/</span>
+        <a href="/phim/@Model.Movie.Slug" style="color:var(--muted);text-decoration:none;" onmouseover="this.style.color='var(--neon)'" onmouseout="this.style.color='var(--muted)'">@Model.Movie.Name</a>
+        <span>/</span>
+        <span style="color:var(--neon);">@Model.CurrentEpisode</span>
+    </div>
+</div>
+
+<div style="background:#000;padding:1.5rem 0;">
+    <div style="max-width:1400px;margin:0 auto;padding:0 1.5rem;">
+
+        <!-- TITLE -->
+        <div style="margin-bottom:1rem;">
+            <h1 style="font-size:1.4rem;font-weight:900;letter-spacing:-0.03em;">
+                @Model.Movie.Name
+                <span style="color:var(--neon);font-size:1rem;font-weight:700;margin-left:0.5rem;">— @Model.CurrentEpisode</span>
+            </h1>
+        </div>
+
+        <!-- PLAYER -->
+        <div class="player-wrap" style="border:1px solid #111;">
+            @if (useEmbedPlayer)
+            {
+                <iframe src="@Model.EmbedUrl"
+                        allowfullscreen
+                        allow="autoplay; fullscreen"
+                        referrerpolicy="no-referrer"></iframe>
+            }
+            else if (!string.IsNullOrEmpty(Model.M3u8Url))
+            {
+                <video id="movieVideo" controls playsinline preload="metadata">
+                    @if (!string.IsNullOrEmpty(Model.SubtitleUrl))
+                    {
+                        <track id="movieSubtitleTrack" kind="subtitles" srclang="vi" label="Tiếng Việt" src="@Model.SubtitleUrl" default />
+                    }
+                </video>
+            }
+            else if (!string.IsNullOrEmpty(Model.EmbedUrl))
+            {
+                <iframe src="@Model.EmbedUrl"
+                        allowfullscreen
+                        allow="autoplay; fullscreen"
+                        referrerpolicy="no-referrer"></iframe>
+            }
+            else
+            {
+                <div style="aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;background:#0a0a0a;">
+                    <div style="text-align:center;">
+                        <p style="font-size:3rem;margin-bottom:0.5rem;">⚡</p>
+                        <p style="color:var(--muted);">Không tìm thấy link phim</p>
+                        <a href="/phim/@Model.Movie.Slug" style="color:var(--neon);font-weight:700;">← Quay lại</a>
+                    </div>
+                </div>
+            }
+        </div>
+        <div class="ai-voice-bar">
+            <label class="ai-voice-toggle" title="Bot đọc dòng phụ đề hiện tại bằng Web Speech API">
+                <input type="checkbox" id="aiVoiceToggle" />
+                <span class="ai-voice-switch" aria-hidden="true"></span>
+                <span>Thuyết minh AI</span>
+            </label>
+            <span class="ai-voice-status" id="aiVoiceStatus">Tắt</span>
+        </div>
+
+        <!-- SERVER + EPISODE SELECTOR -->
+        <div style="background:#0a0a0a;border:1px solid #111;border-top:none;padding:1.25rem;">
+
+            <!-- Server tabs -->
+            <div style="margin-bottom:1rem;">
+                <p style="font-size:0.65rem;font-weight:700;letter-spacing:0.15em;color:var(--muted);text-transform:uppercase;margin-bottom:0.6rem;">Chọn Server</p>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;" id="serverTabs">
+                    @foreach (var server in Model.Episodes)
+                    {
+                        <button class="server-tab @(server.ServerName == Model.CurrentServer ? "active" : "")"
+                                onclick="showServer('@server.ServerName', this)">
+                            @server.ServerName
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <!-- Episode list -->
+            <div>
+                <p style="font-size:0.65rem;font-weight:700;letter-spacing:0.15em;color:var(--muted);text-transform:uppercase;margin-bottom:0.6rem;">Danh Sách Tập</p>
+                @foreach (var server in Model.Episodes)
+                {
+                    <div id="server-@server.ServerName.Replace(" ","_")"
+                         class="ep-list"
+                         style="display:@(server.ServerName == Model.CurrentServer ? "flex" : "none");flex-wrap:wrap;gap:8px;">
+                        @foreach (var ep in server.ServerData)
+                        {
+                            var isActive = ep.Name == Model.CurrentEpisode;
+                            <a href="/xem/@Model.Movie.Slug/@ep.Slug?server=@Uri.EscapeDataString(server.ServerName)"
+                               class="ep-btn @(isActive ? "ep-btn-active" : "")">@ep.Name</a>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- MOVIE INFO STRIP -->
+        <div style="display:flex;gap:1.5rem;align-items:center;padding:1rem 0;margin-top:1rem;border-top:1px solid #111;flex-wrap:wrap;">
+            <img src="@ImageUrl(Model.Movie.ThumbUrl)" alt="@Model.Movie.Name" style="width:60px;height:90px;object-fit:cover;border-radius:2px;border:1px solid #1a1a1a;" />
+            <div style="flex:1;">
+                <h2 style="font-weight:900;font-size:1rem;margin-bottom:0.3rem;">@Model.Movie.Name</h2>
+                <div style="display:flex;gap:1rem;font-size:0.8rem;color:var(--muted);">
+                    @if (!string.IsNullOrEmpty(Model.Movie.Year.ToString()) && Model.Movie.Year > 0)
+                    {
+                        <span>📅 @Model.Movie.Year</span>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.Movie.Quality))
+                    {
+                        <span>🎬 @Model.Movie.Quality</span>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.Movie.Lang))
+                    {
+                        <span>🗣 @Model.Movie.Lang</span>
+                    }
+                </div>
+            </div>
+            <a href="/phim/@Model.Movie.Slug" style="color:var(--neon);font-weight:700;font-size:0.82rem;text-decoration:none;border:1px solid var(--neon);padding:8px 16px;border-radius:2px;transition:all 0.2s;" onmouseover="this.style.background='var(--neon)';this.style.color='#000'" onmouseout="this.style.background='transparent';this.style.color='var(--neon)'">
+                ℹ Chi tiết phim
+            </a>
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+@if (!string.IsNullOrEmpty(Model.M3u8Url))
+{
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+}
+<script>
+function showServer(name, btn) {
+    document.querySelectorAll('.ep-list').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.server-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const key = 'server-' + name.replace(/ /g, '_');
+    const el = document.getElementById(key);
+    if (el) el.style.display = 'flex';
+}
+
+(function () {
+    const video = document.getElementById('movieVideo');
+    const toggle = document.getElementById('aiVoiceToggle');
+    const status = document.getElementById('aiVoiceStatus');
+    const m3u8Url = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.M3u8Url));
+    const subtitleUrl = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SubtitleUrl));
+
+    let subtitles = [];
+    let botEnabled = false;
+    let selectedVoice = null;
+    let lastSpokenSubtitle = null;
+    let subtitleStatusMessage = subtitleUrl
+        ? 'Đang tải phụ đề...'
+        : 'Tập này chưa có phụ đề dạng text (.srt/.vtt) để bot đọc';
+
+    if (!toggle || !status) return;
+
+    if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
+        toggle.disabled = true;
+        status.textContent = 'Trình duyệt không hỗ trợ đọc giọng nói';
+        return;
+    }
+
+    if (!video) {
+        toggle.disabled = true;
+        status.textContent = 'Bot cần player video trực tiếp để lấy thời gian phát';
+        return;
+    }
+
+    setupVideoPlayer();
+    loadVoices();
+    loadSubtitles();
+
+    toggle.addEventListener('change', function () {
+        botEnabled = toggle.checked;
+        lastSpokenSubtitle = null;
+
+        if (!botEnabled) {
+            stopSpeaking();
+            status.textContent = 'Tắt';
+            return;
+        }
+
+        status.textContent = subtitles.length > 0 ? 'Đang bật' : subtitleStatusMessage;
+        speakCurrentSubtitle();
+    });
+
+    video.addEventListener('timeupdate', speakCurrentSubtitle);
+    video.addEventListener('pause', function () {
+        // Khi phim pause, tạm dừng câu đang đọc để không lệch với hình.
+        window.speechSynthesis.pause();
+    });
+    video.addEventListener('play', function () {
+        if (!botEnabled) return;
+        window.speechSynthesis.resume();
+        speakCurrentSubtitle();
+    });
+    video.addEventListener('seeking', function () {
+        // Khi tua phim, cho phép đọc lại dòng subtitle tương ứng mốc mới.
+        lastSpokenSubtitle = null;
+        stopSpeaking();
+    });
+    video.addEventListener('ended', stopSpeaking);
+    window.addEventListener('beforeunload', stopSpeaking);
+
+    function setupVideoPlayer() {
+        if (!m3u8Url) return;
+
+        if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = m3u8Url;
+            return;
+        }
+
+        if (window.Hls && window.Hls.isSupported()) {
+            const hls = new window.Hls();
+            hls.loadSource(m3u8Url);
+            hls.attachMedia(video);
+            return;
+        }
+
+        status.textContent = 'Trình duyệt không hỗ trợ HLS';
+    }
+
+    async function loadSubtitles() {
+        if (!subtitleUrl) {
+            status.textContent = subtitleStatusMessage;
+            return;
+        }
+
+        try {
+            const response = await fetch(subtitleUrl);
+            if (!response.ok) throw new Error('Không tải được phụ đề');
+
+            const subtitleText = await response.text();
+            subtitles = parseSubtitle(subtitleText);
+            subtitleStatusMessage = subtitles.length > 0
+                ? `Đã tải ${subtitles.length} dòng phụ đề`
+                : 'File phụ đề không có dòng đọc được';
+            status.textContent = botEnabled && subtitles.length > 0 ? 'Đang bật' : subtitleStatusMessage;
+        } catch (error) {
+            subtitles = [];
+            subtitleStatusMessage = 'Không tải được phụ đề dạng text cho tập này';
+            status.textContent = subtitleStatusMessage;
+        }
+    }
+
+    function parseSubtitle(content) {
+        // Parser dùng chung cho .srt và .vtt: lấy mốc thời gian rồi gom text ở dưới.
+        const normalized = content
+            .replace(/\r/g, '')
+            .replace(/^\uFEFF/, '')
+            .split('\n')
+            .filter(line => !/^WEBVTT($|\s)/i.test(line.trim()))
+            .join('\n');
+
+        const blocks = normalized.split(/\n{2,}/);
+
+        return blocks.map(block => {
+            const lines = block.split('\n').map(line => line.trim()).filter(Boolean);
+            const timeIndex = lines.findIndex(line => line.includes('-->'));
+            if (timeIndex === -1) return null;
+
+            const timeLine = lines[timeIndex];
+            const parts = timeLine.split('-->');
+            const start = parseSubtitleTime(parts[0]);
+            const end = parseSubtitleTime(parts[1]);
+            const text = lines
+                .slice(timeIndex + 1)
+                .join(' ')
+                .replace(/<[^>]*>/g, '')
+                .replace(/\{\\.*?\}/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            if (!Number.isFinite(start) || !Number.isFinite(end) || !text) return null;
+            return { start, end, text };
+        }).filter(Boolean);
+    }
+
+    function parseSubtitleTime(value) {
+        const cleanValue = value.trim().split(/\s+/)[0].replace(',', '.');
+        const parts = cleanValue.split(':').map(Number);
+
+        if (parts.length === 3) {
+            return parts[0] * 3600 + parts[1] * 60 + parts[2];
+        }
+
+        if (parts.length === 2) {
+            return parts[0] * 60 + parts[1];
+        }
+
+        return Number.NaN;
+    }
+
+    function speakCurrentSubtitle() {
+        if (!botEnabled || video.paused || subtitles.length === 0) return;
+
+        const currentTime = video.currentTime;
+        const currentSubtitle = subtitles.find(sub => currentTime >= sub.start && currentTime <= sub.end);
+
+        if (!currentSubtitle) return;
+
+        const subtitleKey = `${currentSubtitle.start}-${currentSubtitle.end}-${currentSubtitle.text}`;
+        if (subtitleKey === lastSpokenSubtitle) return;
+
+        lastSpokenSubtitle = subtitleKey;
+        stopSpeaking();
+        speakText(currentSubtitle.text);
+    }
+
+    function speakText(text) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'vi-VN';
+        utterance.rate = 1.0;
+
+        if (selectedVoice) {
+            utterance.voice = selectedVoice;
+        }
+
+        window.speechSynthesis.speak(utterance);
+    }
+
+    function stopSpeaking() {
+        window.speechSynthesis.cancel();
+    }
+
+    function loadVoices() {
+        const chooseVoice = function () {
+            const voices = window.speechSynthesis.getVoices();
+            selectedVoice = voices.find(voice => voice.lang && voice.lang.toLowerCase().startsWith('vi')) || null;
+        };
+
+        chooseVoice();
+        window.speechSynthesis.onvoiceschanged = chooseVoice;
+    }
+})();
+</script>
+}

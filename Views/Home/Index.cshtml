@@ -1,0 +1,437 @@
+@model List<MovieItem>
+@{
+    ViewData["Title"] = "LVDKMovie - Phim thuyết minh";
+    var history = ViewBag.History as List<WatchHistory> ?? new();
+    var series = ViewBag.Series as List<MovieItem> ?? new();
+    var single = ViewBag.Single as List<MovieItem> ?? new();
+    var featured = (Model ?? new List<MovieItem>()).Take(10).ToList();
+    var latest = (Model ?? new List<MovieItem>()).Skip(4).Take(12).ToList();
+    var topMovies = featured.Take(8).ToList();
+
+    string ImageUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return "https://via.placeholder.com/320x480/111827/D4AF37?text=LVDK";
+        }
+
+        if (url.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+        {
+            return url;
+        }
+
+        return $"https://img.ophim.live/uploads/movies/{url.TrimStart('/')}";
+    }
+
+    string ShortTitle(string title, int max = 22)
+    {
+        if (string.IsNullOrWhiteSpace(title) || title.Length <= max) return title;
+        return title.Substring(0, max).TrimEnd() + "...";
+    }
+}
+
+<style>
+.home-shell {
+    background:
+        radial-gradient(circle at 16% 0%, rgba(218, 41, 28, 0.16), transparent 30%),
+        radial-gradient(circle at 88% 10%, rgba(212, 175, 55, 0.11), transparent 26%),
+        #070a10;
+    min-height: 100vh;
+    padding: 1.35rem 0 3rem;
+}
+.home-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 1.25rem;
+}
+.hot-tags {
+    display: flex;
+    gap: 0.55rem;
+    overflow-x: auto;
+    padding: 0.75rem 0 1.4rem;
+}
+.hot-tag {
+    flex: 0 0 auto;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: #161b2b;
+    color: #d6def5;
+    border-radius: 999px;
+    padding: 0.45rem 0.9rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+.hot-tag:first-child {
+    color: #111;
+    background: linear-gradient(135deg, #d4af37, #ffd66b);
+}
+.section-head {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin: 0.6rem 0 1rem;
+}
+.section-mark {
+    width: 4px;
+    height: 24px;
+    border-radius: 999px;
+    background: linear-gradient(#6d5dfc, #da291c);
+}
+.section-title {
+    color: #fff;
+    font-size: 1.25rem;
+    font-weight: 900;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+.featured-row {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(148px, 1fr);
+    gap: 0.9rem;
+    overflow-x: auto;
+    padding-bottom: 0.6rem;
+}
+.history-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(155px, 155px));
+    gap: 1rem;
+}
+.poster-card {
+    position: relative;
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #151a29;
+    border: 1px solid rgba(255,255,255,0.07);
+    text-decoration: none;
+    transition: transform 0.2s, border-color 0.2s;
+}
+.poster-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(212,175,55,0.55);
+}
+.poster-card img {
+    width: 100%;
+    aspect-ratio: 2/3;
+    object-fit: cover;
+    display: block;
+}
+.poster-shade {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(6,8,13,0.98) 0%, rgba(6,8,13,0.18) 55%, transparent 100%);
+}
+.label-pill {
+    position: absolute;
+    top: 0.55rem;
+    left: 0.55rem;
+    border-radius: 4px;
+    padding: 0.22rem 0.45rem;
+    color: #fff;
+    background: #6d5dfc;
+    font-size: 0.68rem;
+    font-weight: 900;
+}
+.episode-pill {
+    position: absolute;
+    right: 0.5rem;
+    bottom: 4.8rem;
+    max-width: calc(100% - 1rem);
+    border-radius: 4px;
+    padding: 0.22rem 0.45rem;
+    color: #fff;
+    background: rgba(0,0,0,0.78);
+    font-size: 0.66rem;
+    font-weight: 900;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.poster-info {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 0.85rem;
+}
+.poster-title {
+    color: #fff;
+    font-size: 0.86rem;
+    font-weight: 900;
+    line-height: 1.25;
+    margin-bottom: 0.35rem;
+}
+.poster-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    color: #9fb1d1;
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+.quality-badge {
+    color: #ffd66b;
+    background: rgba(212,175,55,0.14);
+    border: 1px solid rgba(212,175,55,0.24);
+    border-radius: 4px;
+    padding: 0.12rem 0.35rem;
+    font-size: 0.66rem;
+}
+.content-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 1.25rem;
+    margin-top: 1.55rem;
+}
+.panel {
+    background: #171c2c;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+}
+.tabs {
+    display: flex;
+    gap: 0.35rem;
+    padding: 0.35rem;
+}
+.tab {
+    display: inline-block;
+    border: none;
+    border-radius: 6px;
+    padding: 0.65rem 1rem;
+    background: transparent;
+    color: #7f8da9;
+    font-weight: 900;
+    font-family: 'Urbanist', sans-serif;
+    text-decoration: none;
+}
+.tab.active {
+    color: #fff;
+    background: linear-gradient(135deg, #da291c, #8c1111);
+    box-shadow: 0 0 0 1px rgba(212,175,55,0.25) inset;
+}
+.movie-grid-home {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+    padding: 1rem;
+}
+.rank-panel {
+    padding: 1rem;
+}
+.rank-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.35rem;
+    padding: 0.35rem;
+    margin: 0.85rem 0;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 8px;
+}
+.rank-tab {
+    display: block;
+    border-radius: 6px;
+    padding: 0.55rem 0;
+    text-align: center;
+    color: #7f8da9;
+    font-size: 0.78rem;
+    font-weight: 900;
+    text-decoration: none;
+}
+.rank-tab.active {
+    color: #111;
+    background: linear-gradient(135deg, #ffd66b, #d4af37);
+}
+.rank-item {
+    display: grid;
+    grid-template-columns: 28px 1fr;
+    gap: 0.75rem;
+    padding: 0.6rem 0;
+    text-decoration: none;
+}
+.rank-number {
+    font-size: 1.05rem;
+    font-weight: 900;
+    color: #da291c;
+}
+.rank-item:nth-child(2) .rank-number { color: #d4af37; }
+.rank-item:nth-child(3) .rank-number { color: #23d18b; }
+.rank-name {
+    color: #fff;
+    font-size: 0.84rem;
+    font-weight: 900;
+    line-height: 1.25;
+}
+.rank-sub {
+    color: #7f8da9;
+    font-size: 0.72rem;
+    margin-top: 0.25rem;
+}
+.empty-state {
+    color: #9fb1d1;
+    padding: 3rem 1rem;
+    text-align: center;
+}
+@@media (max-width: 980px) {
+    .content-grid { grid-template-columns: 1fr; }
+    .movie-grid-home { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@@media (max-width: 640px) {
+    .featured-row { grid-auto-columns: minmax(138px, 46vw); }
+    .history-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .movie-grid-home { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .tabs { overflow-x: auto; }
+    .tab { flex: 0 0 auto; }
+}
+</style>
+
+<div class="home-shell">
+    <div class="home-inner">
+        @if (history.Any())
+        {
+            <section style="margin-bottom:1.6rem;">
+                <div class="section-head">
+                    <span class="section-mark"></span>
+                    <h2 class="section-title">Đang xem tới đâu</h2>
+                </div>
+                <div class="history-row">
+                    @foreach (var h in history)
+                    {
+                        <a class="poster-card" href="/xem/@h.Slug">
+                            <img src="@ImageUrl(h.Thumb)" alt="@h.Title" loading="lazy" />
+                            <span class="poster-shade"></span>
+                            <span class="label-pill">ĐÃ XEM</span>
+                            <span class="episode-pill">@h.Episode</span>
+                            <div class="poster-info">
+                                <div class="poster-title">@ShortTitle(h.Title)</div>
+                                <div class="poster-meta"><span>Tiếp tục</span><span class="quality-badge">PLAY</span></div>
+                            </div>
+                        </a>
+                    }
+                </div>
+            </section>
+        }
+
+        <div class="hot-tags">
+            <a class="hot-tag" href="/Home/Search?keyword=phim%20hot">HOT hôm nay</a>
+            @foreach (var movie in featured)
+            {
+                <a class="hot-tag" href="/phim/@movie.Slug">@ShortTitle(movie.Name, 18)</a>
+            }
+        </div>
+
+        <section>
+            <div class="section-head">
+                <span class="section-mark"></span>
+                <h2 class="section-title">Phim hay</h2>
+            </div>
+
+            @if (featured.Any())
+            {
+                <div class="featured-row">
+                    @foreach (var movie in featured)
+                    {
+                        <a class="poster-card" href="/phim/@movie.Slug">
+                            <img src="@ImageUrl(movie.ThumbUrl)" alt="@movie.Name" loading="lazy" />
+                            <span class="poster-shade"></span>
+                            <span class="label-pill">@(movie.Lang?.Contains("Thuyết", StringComparison.OrdinalIgnoreCase) == true ? "TM" : "VS")</span>
+                            @if (!string.IsNullOrWhiteSpace(movie.EpisodeCurrent))
+                            {
+                                <span class="episode-pill">@movie.EpisodeCurrent</span>
+                            }
+                            <div class="poster-info">
+                                <div class="poster-title">@ShortTitle(movie.Name)</div>
+                                <div class="poster-meta">
+                                    <span>@movie.Year</span>
+                                    <span class="quality-badge">@(string.IsNullOrWhiteSpace(movie.Quality) ? "HD" : movie.Quality)</span>
+                                </div>
+                            </div>
+                        </a>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="empty-state panel">Đang tải danh sách phim hot mới nhất...</div>
+            }
+        </section>
+
+        <div class="content-grid">
+            <section class="panel">
+                <div class="tabs">
+                    <a class="tab active" href="/danh-sach/phim-moi-cap-nhat">Mới cập nhật</a>
+                    <a class="tab" href="/danh-sach/phim-bo">Phim bộ</a>
+                    <a class="tab" href="/danh-sach/phim-le">Phim lẻ</a>
+                </div>
+
+                <div class="movie-grid-home">
+                    @foreach (var movie in latest)
+                    {
+                        <a class="poster-card" href="/phim/@movie.Slug">
+                            <img src="@ImageUrl(movie.ThumbUrl)" alt="@movie.Name" loading="lazy" />
+                            <span class="poster-shade"></span>
+                            <span class="label-pill">@(movie.Lang?.Contains("Thuyết", StringComparison.OrdinalIgnoreCase) == true ? "TM" : "VS")</span>
+                            @if (!string.IsNullOrWhiteSpace(movie.EpisodeCurrent))
+                            {
+                                <span class="episode-pill">@movie.EpisodeCurrent</span>
+                            }
+                            <div class="poster-info">
+                                <div class="poster-title">@ShortTitle(movie.Name)</div>
+                                <div class="poster-meta">
+                                    <span>@movie.Year</span>
+                                    <span class="quality-badge">@(string.IsNullOrWhiteSpace(movie.Quality) ? "HD" : movie.Quality)</span>
+                                </div>
+                            </div>
+                        </a>
+                    }
+
+                    @if (!latest.Any())
+                    {
+                        foreach (var movie in series.Concat(single).Take(8))
+                        {
+                            <a class="poster-card" href="/phim/@movie.Slug">
+                                <img src="@ImageUrl(movie.ThumbUrl)" alt="@movie.Name" loading="lazy" />
+                                <span class="poster-shade"></span>
+                                <span class="label-pill">VS</span>
+                                <span class="episode-pill">@movie.EpisodeCurrent</span>
+                                <div class="poster-info">
+                                    <div class="poster-title">@ShortTitle(movie.Name)</div>
+                                    <div class="poster-meta">
+                                        <span>@movie.Year</span>
+                                        <span class="quality-badge">@(string.IsNullOrWhiteSpace(movie.Quality) ? "HD" : movie.Quality)</span>
+                                    </div>
+                                </div>
+                            </a>
+                        }
+                    }
+                </div>
+            </section>
+
+            <aside class="panel rank-panel">
+                <div class="section-head" style="margin-top:0;">
+                    <span class="section-mark"></span>
+                    <h2 class="section-title">Top xem nhiều</h2>
+                </div>
+                <div class="rank-tabs">
+                    <a class="rank-tab active" href="/danh-sach/phim-moi-cap-nhat">Ngày</a>
+                    <a class="rank-tab" href="/Home/Search?keyword=phim%20hot%20thang">Tháng</a>
+                    <a class="rank-tab" href="/Home/Search?keyword=phim%20hot%202026">Năm</a>
+                </div>
+
+                @for (var i = 0; i < topMovies.Count; i++)
+                {
+                    var movie = topMovies[i];
+                    <a class="rank-item" href="/phim/@movie.Slug">
+                        <span class="rank-number">@(i + 1)</span>
+                        <span>
+                            <span class="rank-name">@ShortTitle(movie.Name, 28)</span>
+                            <span class="rank-sub">@movie.OriginName</span>
+                        </span>
+                    </a>
+                }
+            </aside>
+        </div>
+    </div>
+</div>

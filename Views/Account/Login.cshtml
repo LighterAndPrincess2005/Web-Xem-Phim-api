@@ -1,0 +1,99 @@
+@{
+    ViewData["Title"] = "Đăng nhập - LVDKMovie";
+}
+
+<style>
+.login-page {
+    min-height: calc(100vh - 150px);
+    display: grid;
+    place-items: center;
+    padding: 2rem 1rem;
+    background:
+        radial-gradient(circle at 20% 10%, rgba(218,41,28,0.18), transparent 30%),
+        radial-gradient(circle at 80% 0%, rgba(212,175,55,0.12), transparent 24%),
+        #070a10;
+}
+.login-box {
+    width: min(420px, 100%);
+    background: #171c2c;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+.login-title {
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: #fff;
+    margin-bottom: 0.35rem;
+}
+.login-sub {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.25rem;
+}
+.login-field {
+    display: block;
+    margin-bottom: 0.9rem;
+}
+.login-field span {
+    display: block;
+    color: #d6def5;
+    font-size: 0.82rem;
+    font-weight: 800;
+    margin-bottom: 0.35rem;
+}
+.login-field input {
+    width: 100%;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 6px;
+    background: #101624;
+    color: #fff;
+    padding: 0.8rem 0.9rem;
+}
+.login-field input:focus {
+    outline: none;
+    border-color: var(--red);
+}
+.login-button {
+    width: 100%;
+    border: none;
+    border-radius: 6px;
+    padding: 0.85rem 1rem;
+    background: linear-gradient(135deg, var(--red), var(--red-dark));
+    color: #fff;
+    font-weight: 900;
+    cursor: pointer;
+}
+.login-error {
+    color: #ffd66b;
+    background: rgba(212,175,55,0.12);
+    border: 1px solid rgba(212,175,55,0.25);
+    border-radius: 6px;
+    padding: 0.7rem 0.8rem;
+    margin-bottom: 1rem;
+}
+</style>
+
+<div class="login-page">
+    <form class="login-box" method="post" action="/Account/Login">
+        <h1 class="login-title">Đăng nhập</h1>
+        <p class="login-sub">Tài khoản mặc định: admin / admin</p>
+
+        @if (!string.IsNullOrWhiteSpace(ViewBag.Error as string))
+        {
+            <div class="login-error">@ViewBag.Error</div>
+        }
+
+        <label class="login-field">
+            <span>Tài khoản</span>
+            <input name="userName" value="admin" autocomplete="username" />
+        </label>
+
+        <label class="login-field">
+            <span>Mật khẩu</span>
+            <input name="password" value="admin" type="password" autocomplete="current-password" />
+        </label>
+
+        <button class="login-button" type="submit">Đăng nhập</button>
+    </form>
+</div>

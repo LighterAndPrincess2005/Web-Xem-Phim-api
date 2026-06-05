@@ -1,0 +1,48 @@
+@model List<MovieItem>
+@{
+    var keyword = ViewBag.Keyword as string ?? "";
+    ViewData["Title"] = $"Tìm kiếm: {keyword}";
+
+    string ImageUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return "https://via.placeholder.com/320x480/111827/D4AF37?text=LVDK";
+        if (url.StartsWith("http", StringComparison.OrdinalIgnoreCase)) return url;
+        return $"https://img.ophim.live/uploads/movies/{url.TrimStart('/')}";
+    }
+}
+
+<div style="max-width:1280px;margin:0 auto;padding:2.5rem 1.25rem;">
+    <div style="margin-bottom:1.5rem;">
+        <p style="font-size:0.75rem;font-weight:900;letter-spacing:0.14em;color:var(--neon);text-transform:uppercase;">Kết quả tìm kiếm</p>
+        <h1 style="font-size:clamp(2rem,4vw,3rem);font-weight:900;color:#fff;">@keyword</h1>
+    </div>
+
+    @if (Model != null && Model.Any())
+    {
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:1rem;">
+            @foreach (var movie in Model)
+            {
+                <a href="/phim/@movie.Slug" style="text-decoration:none;">
+                    <div class="movie-card">
+                        <img src="@ImageUrl(movie.ThumbUrl)" alt="@movie.Name" loading="lazy" />
+                        <div class="overlay"></div>
+                        @if (!string.IsNullOrEmpty(movie.Quality))
+                        {
+                            <div class="badge">@movie.Quality</div>
+                        }
+                        <div class="info">
+                            <div class="title">@movie.Name</div>
+                            <div class="sub">@movie.EpisodeCurrent</div>
+                        </div>
+                    </div>
+                </a>
+            }
+        </div>
+    }
+    else
+    {
+        <div style="text-align:center;padding:4rem;color:var(--muted);background:#171c2c;border:1px solid rgba(255,255,255,0.08);border-radius:8px;">
+            <p>Không tìm thấy phim nào cho từ khóa "<strong style="color:var(--neon)">@keyword</strong>".</p>
+        </div>
+    }
+</div>
