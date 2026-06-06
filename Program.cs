@@ -1,6 +1,8 @@
 using LVDKMovie.Data;
 using Microsoft.EntityFrameworkCore;
 
+const string defaultAvatarUrl = "/images/avatars/default-admin.jpg";
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
@@ -31,8 +33,36 @@ using (var scope = app.Services.CreateScope())
             Id INTEGER NOT NULL CONSTRAINT PK_AppUsers PRIMARY KEY AUTOINCREMENT,
             UserName TEXT NOT NULL,
             Password TEXT NOT NULL,
-            DisplayName TEXT NOT NULL
+            DisplayName TEXT NOT NULL,
+            AvatarUrl TEXT NOT NULL DEFAULT '/images/avatars/default-admin.jpg'
         );
+        """);
+    try
+    {
+        db.Database.ExecuteSqlRaw("""
+            ALTER TABLE AppUsers
+            ADD COLUMN AvatarUrl TEXT NOT NULL DEFAULT '/images/avatars/default-admin.jpg';
+            """);
+    }
+    catch
+    {
+        // Column already exists in upgraded local databases.
+    }
+    db.Database.ExecuteSqlRaw("""
+        CREATE TABLE IF NOT EXISTS FavoriteMovies (
+            Id INTEGER NOT NULL CONSTRAINT PK_FavoriteMovies PRIMARY KEY AUTOINCREMENT,
+            UserId INTEGER NOT NULL,
+            Slug TEXT NOT NULL,
+            Title TEXT NOT NULL,
+            Thumb TEXT NOT NULL,
+            Poster TEXT NOT NULL,
+            Year INTEGER NOT NULL,
+            CreatedAt TEXT NOT NULL
+        );
+        """);
+    db.Database.ExecuteSqlRaw("""
+        CREATE UNIQUE INDEX IF NOT EXISTS IX_FavoriteMovies_UserId_Slug
+        ON FavoriteMovies (UserId, Slug);
         """);
 
     if (!db.AppUsers.Any(u => u.UserName == "admin"))
@@ -41,8 +71,29 @@ using (var scope = app.Services.CreateScope())
         {
             UserName = "admin",
             Password = "admin",
-            DisplayName = "Admin"
+            DisplayName = "Admin",
+            AvatarUrl = defaultAvatarUrl
         });
+        db.SaveChanges();
+    }
+
+    var usersWithoutAvatar = db.AppUsers
+        .Where(u => string.IsNullOrWhiteSpace(u.AvatarUrl))
+        .ToList();
+
+    foreach (var user in usersWithoutAvatar)
+    {
+        user.AvatarUrl = defaultAvatarUrl;
+    }
+
+    var admin = db.AppUsers.FirstOrDefault(u => u.UserName == "admin");
+    if (admin != null && admin.AvatarUrl != defaultAvatarUrl)
+    {
+        admin.AvatarUrl = defaultAvatarUrl;
+    }
+
+    if (usersWithoutAvatar.Any() || admin != null)
+    {
         db.SaveChanges();
     }
 }
@@ -70,6 +121,16 @@ app.MapControllerRoute(
     name: "list",
     pattern: "danh-sach/{slug}",
     defaults: new { controller = "Home", action = "DanhSach" });
+
+app.MapControllerRoute(
+    name: "category",
+    pattern: "the-loai/{slug}",
+    defaults: new { controller = "Home", action = "TheLoai" });
+
+app.MapControllerRoute(
+    name: "country",
+    pattern: "quoc-gia/{slug}",
+    defaults: new { controller = "Home", action = "QuocGia" });
 
 app.MapControllerRoute(
     name: "default",

@@ -28,6 +28,10 @@ public class MovieController : Controller
             if (data?.Movie == null) return NotFound();
             await AddKkPhimThuyetMinhServers(data, slug);
 
+            var userId = GetCurrentUserId();
+            ViewBag.IsFavorite = userId != null &&
+                _db.FavoriteMovies.Any(f => f.UserId == userId.Value && f.Slug == slug);
+
             return View(data);
         }
         catch
@@ -105,6 +109,38 @@ public class MovieController : Controller
     }
 
     [HttpPost]
+    public IActionResult ToggleFavorite(string slug, string title, string thumb, string poster, int year)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null)
+        {
+            return RedirectToAction("Login", "Account");
+        }
+
+        var existing = _db.FavoriteMovies.FirstOrDefault(f => f.UserId == userId.Value && f.Slug == slug);
+        if (existing != null)
+        {
+            _db.FavoriteMovies.Remove(existing);
+        }
+        else
+        {
+            _db.FavoriteMovies.Add(new FavoriteMovie
+            {
+                UserId = userId.Value,
+                Slug = slug,
+                Title = title,
+                Thumb = thumb,
+                Poster = poster,
+                Year = year,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        _db.SaveChanges();
+        return RedirectToAction("Detail", new { slug });
+    }
+
+    [HttpPost]
     public IActionResult DeleteHistory(int id)
     {
         var item = _db.WatchHistories.Find(id);
@@ -114,6 +150,27 @@ public class MovieController : Controller
             _db.SaveChanges();
         }
         return RedirectToAction("Index", "Home");
+    }
+
+    private int? GetCurrentUserId()
+    {
+        var sessionUserId = HttpContext.Session.GetInt32("UserId");
+        if (sessionUserId != null) return sessionUserId;
+
+        if (!Request.Cookies.TryGetValue("LVDKMovie.UserId", out var userIdValue) ||
+            !int.TryParse(userIdValue, out var userId))
+        {
+            return null;
+        }
+
+        var user = _db.AppUsers.Find(userId);
+        if (user == null) return null;
+
+        HttpContext.Session.SetInt32("UserId", user.Id);
+        HttpContext.Session.SetString("UserName", user.UserName);
+        HttpContext.Session.SetString("DisplayName", string.IsNullOrWhiteSpace(user.DisplayName) ? user.UserName : user.DisplayName);
+        HttpContext.Session.SetString("AvatarUrl", string.IsNullOrWhiteSpace(user.AvatarUrl) ? "/images/avatars/default-admin.jpg" : user.AvatarUrl);
+        return user.Id;
     }
 
     private static string GetBestSubtitleUrl(EpisodeItem? episode)

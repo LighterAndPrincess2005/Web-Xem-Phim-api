@@ -1,6 +1,7 @@
 @model MovieDetailResponse
 @{
     var movie = Model.Movie!;
+    var isFavorite = ViewBag.IsFavorite as bool? ?? false;
 
     string ImageUrl(string url)
     {
@@ -67,6 +68,34 @@
     transition: opacity 0.2s;
 }
 .btn-watch:hover { opacity: 0.85; }
+.favorite-form {
+    display: inline-flex;
+    margin-left: 0.7rem;
+}
+.favorite-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid rgba(212,175,55,0.55);
+    background: rgba(212,175,55,0.08);
+    color: #fff;
+    font-family: 'Urbanist', sans-serif;
+    font-weight: 900;
+    font-size: 0.9rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 13px 24px;
+    cursor: pointer;
+    text-decoration: none;
+    border-radius: 2px;
+    transition: all 0.2s;
+}
+.favorite-btn.active {
+    background: rgba(218,41,28,0.22);
+    border-color: var(--red);
+    color: #fff;
+}
+.favorite-btn:hover { border-color: var(--neon); color: var(--neon); }
 .ep-btn {
     display: inline-block;
     padding: 6px 14px;
@@ -120,11 +149,11 @@
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.5rem;">
                 @foreach (var cat in movie.Category.Take(4))
                 {
-                    <a href="/Home/TheLoai/@cat.Slug" class="tag">@cat.Name</a>
+                    <a href="/the-loai/@cat.Slug" class="tag">@cat.Name</a>
                 }
                 @foreach (var c in movie.Country.Take(2))
                 {
-                    <a href="/Home/QuocGia/@c.Slug" class="tag">🌍 @c.Name</a>
+                    <a href="/quoc-gia/@c.Slug" class="tag">🌍 @c.Name</a>
                 }
             </div>
 
@@ -135,6 +164,18 @@
                     ▶ XEM NGAY
                 </a>
             }
+            <form class="favorite-form" method="post" action="/Movie/ToggleFavorite">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="slug" value="@movie.Slug" />
+                <input type="hidden" name="title" value="@movie.Name" />
+                <input type="hidden" name="thumb" value="@movie.ThumbUrl" />
+                <input type="hidden" name="poster" value="@movie.PosterUrl" />
+                <input type="hidden" name="year" value="@movie.Year" />
+                <button class="favorite-btn @(isFavorite ? "active" : "")" type="submit" title="Ghim phim yêu thích">
+                    <span aria-hidden="true">&#9829;</span>
+                    <span>@(isFavorite ? "ĐÃ GHIM" : "YÊU THÍCH")</span>
+                </button>
+            </form>
 
             <div style="margin-top:1.25rem;display:flex;gap:2rem;">
                 @if (!string.IsNullOrEmpty(movie.Time))
