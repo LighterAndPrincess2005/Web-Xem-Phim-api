@@ -1,21 +1,35 @@
 using LVDKMovie.Data;
+using LVDKMovie.Security;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 const string defaultAvatarUrl = "/images/avatars/default-admin.jpg";
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllersWithViews();
-builder.Services.AddSession();
+builder.Services.AddControllersWithViews(options =>
+{
+    options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
+});
+builder.Services.AddMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    options.IdleTimeout = TimeSpan.FromDays(14);
+});
 builder.Services.AddHttpClient("OPhim", client =>
 {
     client.BaseAddress = new Uri("https://ophim1.com/v1/api/");
     client.DefaultRequestHeaders.Add("Accept", "application/json");
+    client.Timeout = TimeSpan.FromSeconds(6);
 });
 builder.Services.AddHttpClient("KKPhim", client =>
 {
     client.BaseAddress = new Uri("https://phimapi.com/");
     client.DefaultRequestHeaders.Add("Accept", "application/json");
+    client.Timeout = TimeSpan.FromSeconds(4);
 });
 
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -65,12 +79,16 @@ using (var scope = app.Services.CreateScope())
         ON FavoriteMovies (UserId, Slug);
         """);
 
+    AddColumnIfMissing(db, "WatchHistories", "UserId", "INTEGER NOT NULL DEFAULT 0");
+    AddColumnIfMissing(db, "WatchHistories", "EpisodeSlug", "TEXT NOT NULL DEFAULT ''");
+    AddColumnIfMissing(db, "WatchHistories", "ServerName", "TEXT NOT NULL DEFAULT ''");
+
     if (!db.AppUsers.Any(u => u.UserName == "admin"))
     {
         db.AppUsers.Add(new AppUser
         {
             UserName = "admin",
-            Password = "admin",
+            Password = PasswordService.Hash("admin"),
             DisplayName = "Admin",
             AvatarUrl = defaultAvatarUrl
         });
@@ -92,9 +110,23 @@ using (var scope = app.Services.CreateScope())
         admin.AvatarUrl = defaultAvatarUrl;
     }
 
-    if (usersWithoutAvatar.Any() || admin != null)
+    var usersWithPlainPasswords = db.AppUsers
+        .Where(u => !u.Password.StartsWith("pbkdf2$"))
+        .ToList();
+
+    foreach (var user in usersWithPlainPasswords)
+    {
+        user.Password = PasswordService.Hash(user.Password);
+    }
+
+    if (usersWithoutAvatar.Any() || admin != null || usersWithPlainPasswords.Any())
     {
         db.SaveChanges();
+    }
+
+    if (admin != null)
+    {
+        db.Database.ExecuteSqlRaw("UPDATE WatchHistories SET UserId = {0} WHERE UserId = 0", admin.Id);
     }
 }
 
@@ -105,6 +137,30 @@ if (!app.Environment.IsDevelopment())
 
 app.UseStaticFiles();
 app.UseRouting();
+app.Use(async (context, next) =>
+{
+    var headers = context.Response.Headers;
+    headers["X-Content-Type-Options"] = "nosniff";
+    headers["X-Frame-Options"] = "DENY";
+    headers["Referrer-Policy"] = "no-referrer";
+    headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+    headers["Content-Security-Policy"] =
+        "default-src 'self'; " +
+        "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; " +
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+        "font-src 'self' https://fonts.gstatic.com; " +
+        "img-src 'self' data: https:; " +
+        "frame-src https:; " +
+        "connect-src 'self' https:; " +
+        "media-src 'self' https: blob:";
+
+    if (context.Request.IsHttps)
+    {
+        headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+    }
+
+    await next();
+});
 app.UseSession();
 
 app.MapControllerRoute(
@@ -137,3 +193,15 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.Run();
+
+static void AddColumnIfMissing(DbContext db, string tableName, string columnName, string columnDefinition)
+{
+    try
+    {
+        db.Database.ExecuteSqlRaw("ALTER TABLE " + tableName + " ADD COLUMN " + columnName + " " + columnDefinition + ";");
+    }
+    catch
+    {
+        // Column already exists in upgraded local databases.
+    }
+}

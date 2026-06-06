@@ -14,9 +14,12 @@ public class AppDbContext : DbContext
 public class WatchHistory
 {
     public int Id { get; set; }
+    public int UserId { get; set; }
     public string Slug { get; set; } = "";
     public string Title { get; set; } = "";
     public string Episode { get; set; } = "";
+    public string EpisodeSlug { get; set; } = "";
+    public string ServerName { get; set; } = "";
     public string Thumb { get; set; } = "";
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

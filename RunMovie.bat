@@ -1,5 +1,5 @@
 @echo off
-cd /d D:\Downloads\LVDKMovie\LVDKMovie
+cd /d "%~dp0"
 
 set PORT=5000
 set "AVATAR_SOURCE=C:\Users\Admin\Pictures\Camera Roll\656826954_1346120630881813_365791499904025732_n.jpg"
@@ -39,6 +39,6 @@ echo.
 
 start "" http://localhost:5000
 
-dotnet run --urls "http://0.0.0.0:%PORT%"
+dotnet run --project "%~dp0LVDKMovie.csproj" --urls "http://0.0.0.0:%PORT%"
 
 pause

@@ -103,6 +103,52 @@
             padding: 0.62rem 0.9rem;
             border-radius: 8px;
         }
+        .nav-menu {
+            position: relative;
+            padding: 0.75rem 0;
+            margin: -0.75rem 0;
+        }
+        .nav-menu > a {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        .nav-menu-panel {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 420px;
+            display: none;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.25rem;
+            padding: 0.75rem;
+            background: #111827;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            box-shadow: 0 18px 48px rgba(0,0,0,0.42);
+        }
+        .nav-menu-panel::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: -0.8rem;
+            height: 0.8rem;
+        }
+        .nav-menu:hover .nav-menu-panel,
+        .nav-menu:focus-within .nav-menu-panel {
+            display: grid;
+        }
+        .nav-menu-panel a {
+            padding: 0.55rem 0.65rem;
+            border-radius: 6px;
+            color: #d6def5;
+            white-space: nowrap;
+        }
+        .nav-menu-panel a:hover {
+            color: var(--neon);
+            background: #171c2c;
+        }
         .search-bar {
             width: 280px;
             background: #151b2b;
@@ -224,19 +270,56 @@
         .movie-card:hover .overlay { opacity: 1; }
         .movie-card .badge {
             position: absolute;
-            top: 8px;
-            right: 8px;
+            left: 8px;
+            bottom: 8px;
             background: var(--neon);
             color: #111;
             font-size: 0.6rem;
             font-weight: 900;
-            padding: 2px 6px;
+            padding: 4px 8px;
             border-radius: 4px;
             text-transform: uppercase;
         }
+        .movie-card .stat-row,
+        .poster-card .stat-row {
+            position: absolute;
+            left: 0.55rem;
+            bottom: 0.55rem;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            max-width: calc(100% - 1.1rem);
+        }
+        .poster-card .stat-row {
+            bottom: 4.7rem;
+        }
+        .movie-card .stat-pill,
+        .poster-card .stat-pill {
+            min-width: 42px;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            border-radius: 4px;
+            padding: 0.28rem 0.48rem;
+            color: #fff;
+            font-size: 0.68rem;
+            font-weight: 900;
+            line-height: 1;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.24);
+        }
+        .movie-card .stat-pill.episode,
+        .poster-card .stat-pill.episode {
+            background: #4f46e5;
+        }
+        .movie-card .stat-pill.lang,
+        .poster-card .stat-pill.lang {
+            background: #10b981;
+        }
         .movie-card .info {
             position: absolute;
-            bottom: 0;
+            bottom: 2rem;
             left: 0;
             right: 0;
             padding: 12px 10px;
@@ -273,10 +356,12 @@
         }
         ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: #070a10; }
-        ::-webkit-scrollbar-thumb { background: var(--red); border-radius: 999px; }
+        ::-webkit-scrollbar-thumb { background: #30384f; border-radius: 999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #46506b; }
         @@media (max-width: 920px) {
             .nav-inner { gap: 1rem; flex-wrap: wrap; height: auto; padding-top: 0.85rem; padding-bottom: 0.85rem; }
             .nav-links { order: 3; width: 100%; overflow-x: auto; padding-bottom: 0.2rem; }
+            .nav-menu-panel { position: fixed; left: 1rem; right: 1rem; width: auto; top: 7rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .search-bar { width: min(48vw, 260px); }
         }
         @@media (max-width: 560px) {
@@ -297,7 +382,23 @@
             <a class="active" href="/">Trang chủ</a>
             <a href="/danh-sach/phim-moi-cap-nhat">Tất cả</a>
             <a href="/the-loai/hanh-dong">Thể loại</a>
-            <a href="/quoc-gia/han-quoc">Quốc gia</a>
+            <div class="nav-menu">
+                <a href="/quoc-gia/han-quoc">Quốc gia ▾</a>
+                <div class="nav-menu-panel">
+                    <a href="/quoc-gia/viet-nam">Việt Nam</a>
+                    <a href="/quoc-gia/han-quoc">Hàn Quốc</a>
+                    <a href="/quoc-gia/trung-quoc">Trung Quốc</a>
+                    <a href="/quoc-gia/nhat-ban">Nhật Bản</a>
+                    <a href="/quoc-gia/thai-lan">Thái Lan</a>
+                    <a href="/quoc-gia/au-my">Âu Mỹ</a>
+                    <a href="/quoc-gia/anh">Anh</a>
+                    <a href="/quoc-gia/phap">Pháp</a>
+                    <a href="/quoc-gia/dai-loan">Đài Loan</a>
+                    <a href="/quoc-gia/hong-kong">Hồng Kông</a>
+                    <a href="/quoc-gia/an-do">Ấn Độ</a>
+                    <a href="/quoc-gia/canada">Canada</a>
+                </div>
+            </div>
             <a href="/danh-sach/phim-moi-cap-nhat">Phim mới</a>
             <a href="/danh-sach/phim-bo">Phim bộ</a>
             <a href="/danh-sach/phim-le">Phim lẻ</a>

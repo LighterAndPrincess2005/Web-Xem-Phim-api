@@ -4,9 +4,13 @@
     var history = ViewBag.History as List<WatchHistory> ?? new();
     var series = ViewBag.Series as List<MovieItem> ?? new();
     var single = ViewBag.Single as List<MovieItem> ?? new();
+    var korean = ViewBag.Korean as List<MovieItem> ?? new();
+    var chinese = ViewBag.Chinese as List<MovieItem> ?? new();
     var featured = (Model ?? new List<MovieItem>()).Take(10).ToList();
     var latest = (Model ?? new List<MovieItem>()).Skip(4).Take(12).ToList();
     var topMovies = featured.Take(8).ToList();
+    var koreanRail = korean.Any() ? korean.Take(8).ToList() : featured.Take(8).ToList();
+    var chineseRail = chinese.Any() ? chinese.Take(8).ToList() : series.Take(8).ToList();
 
     string ImageUrl(string url)
     {
@@ -27,6 +31,31 @@
     {
         if (string.IsNullOrWhiteSpace(title) || title.Length <= max) return title;
         return title.Substring(0, max).TrimEnd() + "...";
+    }
+
+    string EpisodeLabel(MovieItem movie)
+    {
+        if (!string.IsNullOrWhiteSpace(movie.EpisodeCurrent)) return movie.EpisodeCurrent;
+        return movie.Type == "single" ? "PĐ. 1" : "PĐ. ?";
+    }
+
+    string LangLabel(MovieItem movie)
+    {
+        var lang = movie.Lang ?? "";
+        if (lang.Contains("Thuyết", StringComparison.OrdinalIgnoreCase) ||
+            lang.Contains("Thuyet", StringComparison.OrdinalIgnoreCase) ||
+            lang.Contains("Lồng", StringComparison.OrdinalIgnoreCase) ||
+            lang.Contains("Long", StringComparison.OrdinalIgnoreCase))
+        {
+            return "TM";
+        }
+
+        return "VS";
+    }
+
+    string HistoryUrl(WatchHistory item)
+    {
+        return $"/Movie/Resume?slug={Uri.EscapeDataString(item.Slug)}";
     }
 }
 
@@ -49,6 +78,28 @@
     gap: 0.55rem;
     overflow-x: auto;
     padding: 0.75rem 0 1.4rem;
+}
+.hot-tags,
+.featured-row,
+.history-row,
+.wide-rail {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    cursor: grab;
+    touch-action: pan-y;
+    user-select: none;
+}
+.featured-row.is-dragging,
+.history-row.is-dragging,
+.wide-rail.is-dragging {
+    cursor: grabbing;
+    scroll-behavior: auto;
+}
+.hot-tags::-webkit-scrollbar,
+.featured-row::-webkit-scrollbar,
+.history-row::-webkit-scrollbar,
+.wide-rail::-webkit-scrollbar {
+    display: none;
 }
 .hot-tag {
     flex: 0 0 auto;
@@ -84,18 +135,61 @@
     letter-spacing: 0;
     text-transform: uppercase;
 }
+.section-title.soft {
+    text-transform: none;
+    font-size: 1.35rem;
+}
 .featured-row {
     display: grid;
     grid-auto-flow: column;
     grid-auto-columns: minmax(148px, 1fr);
     gap: 0.9rem;
     overflow-x: auto;
+    scroll-behavior: smooth;
     padding-bottom: 0.6rem;
 }
 .history-row {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(155px, 155px));
+    grid-auto-flow: column;
+    grid-auto-columns: 180px;
     gap: 1rem;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    padding: 0.2rem 0 1.35rem;
+}
+.history-card-wrap {
+    position: relative;
+}
+.history-delete {
+    position: absolute;
+    top: 0.45rem;
+    right: 0.45rem;
+    z-index: 5;
+}
+.history-delete button {
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.9);
+    color: #111827;
+    font-size: 0.78rem;
+    font-weight: 900;
+    cursor: pointer;
+}
+.history-progress {
+    height: 3px;
+    margin: 0.55rem auto 0;
+    width: 70%;
+    background: rgba(255,255,255,0.16);
+    border-radius: 999px;
+    overflow: hidden;
+}
+.history-progress span {
+    display: block;
+    width: 58%;
+    height: 100%;
+    background: #cbd5e1;
 }
 .poster-card {
     position: relative;
@@ -122,6 +216,146 @@
     position: absolute;
     inset: 0;
     background: linear-gradient(to top, rgba(6,8,13,0.98) 0%, rgba(6,8,13,0.18) 55%, transparent 100%);
+}
+.dub-row {
+    position: absolute;
+    left: 0.55rem;
+    bottom: 4.8rem;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    max-width: calc(100% - 1.1rem);
+}
+.dub-badge {
+    border-radius: 3px;
+    padding: 0.18rem 0.38rem;
+    color: #fff;
+    font-size: 0.58rem;
+    font-weight: 900;
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.24);
+}
+.dub-badge.vs {
+    background: #64748b;
+}
+.dub-badge.tm {
+    background: #16a34a;
+}
+.dub-badge.fallback {
+    background: #4f46e5;
+}
+.wide-panel {
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr);
+    gap: 1rem;
+    margin: 0.4rem 0 1.4rem;
+    padding: 1rem;
+    background: #1b2132;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+}
+.wide-panel.stacked {
+    gap: 1.35rem;
+}
+.rail-wrap {
+    position: relative;
+    min-width: 0;
+}
+.rail-button {
+    position: absolute;
+    top: 44%;
+    z-index: 6;
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    background: rgba(255,255,255,0.92);
+    color: #070a10;
+    font-size: 1.45rem;
+    font-weight: 900;
+    line-height: 1;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.34);
+    cursor: pointer;
+    user-select: none;
+    touch-action: manipulation;
+}
+.rail-button:hover,
+.rail-button:active {
+    background: #fff;
+    transform: scale(1.04);
+}
+.rail-button.prev {
+    left: -0.7rem;
+}
+.rail-button.next {
+    right: -0.7rem;
+}
+.rail-button[disabled] {
+    opacity: 0.28;
+    cursor: default;
+    transform: none;
+}
+.wide-title {
+    align-self: center;
+}
+.wide-title h2 {
+    color: #fff;
+    font-size: 1.35rem;
+    font-weight: 900;
+    line-height: 1.25;
+}
+.wide-title h2 span {
+    color: #f0a8d8;
+}
+.wide-title a {
+    display: inline-flex;
+    margin-top: 1rem;
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+.wide-rail {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(210px, 1fr);
+    gap: 0.85rem;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+}
+.wide-card {
+    min-width: 0;
+    color: #fff;
+    text-decoration: none;
+}
+.wide-thumb {
+    position: relative;
+    overflow: hidden;
+    border-radius: 6px;
+    background: #111827;
+    aspect-ratio: 16/9;
+}
+.wide-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.wide-card-title {
+    margin-top: 0.5rem;
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 900;
+    line-height: 1.25;
+}
+.wide-card-sub {
+    margin-top: 0.28rem;
+    color: #9fb1d1;
+    font-size: 0.72rem;
 }
 .label-pill {
     position: absolute;
@@ -277,10 +511,14 @@
 @@media (max-width: 980px) {
     .content-grid { grid-template-columns: 1fr; }
     .movie-grid-home { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .wide-panel { grid-template-columns: 1fr; }
+    .wide-rail { grid-auto-columns: minmax(210px, 62vw); }
+    .rail-button.prev { left: 0.2rem; }
+    .rail-button.next { right: 0.2rem; }
 }
 @@media (max-width: 640px) {
     .featured-row { grid-auto-columns: minmax(138px, 46vw); }
-    .history-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .history-row { grid-auto-columns: 155px; }
     .movie-grid-home { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .tabs { overflow-x: auto; }
     .tab { flex: 0 0 auto; }
@@ -294,22 +532,37 @@
             <section style="margin-bottom:1.6rem;">
                 <div class="section-head">
                     <span class="section-mark"></span>
-                    <h2 class="section-title">Đang xem tới đâu</h2>
+                    <h2 class="section-title soft">Xem tiếp của bạn</h2>
                 </div>
-                <div class="history-row">
+                <div class="rail-wrap">
+                    <button class="rail-button prev" type="button" data-rail-target="historyRail" data-rail-dir="-1" aria-label="Truoc">&lsaquo;</button>
+                    <div class="history-row" id="historyRail" data-rail>
                     @foreach (var h in history)
                     {
-                        <a class="poster-card" href="/xem/@h.Slug">
-                            <img src="@ImageUrl(h.Thumb)" alt="@h.Title" loading="lazy" />
-                            <span class="poster-shade"></span>
-                            <span class="label-pill">ĐÃ XEM</span>
-                            <span class="episode-pill">@h.Episode</span>
-                            <div class="poster-info">
-                                <div class="poster-title">@ShortTitle(h.Title)</div>
-                                <div class="poster-meta"><span>Tiếp tục</span><span class="quality-badge">PLAY</span></div>
-                            </div>
-                        </a>
+                        <div class="history-card-wrap">
+                            <form class="history-delete" method="post" action="/Movie/DeleteHistory">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@h.Id" />
+                                <button type="submit" title="Xóa khỏi xem tiếp">×</button>
+                            </form>
+                            <a class="poster-card" href="@HistoryUrl(h)">
+                                <img src="@ImageUrl(h.Thumb)" alt="@h.Title" loading="lazy" />
+                                <span class="poster-shade"></span>
+                                <span class="label-pill">ĐÃ XEM</span>
+                                <span class="episode-pill">@h.Episode</span>
+                                <div class="poster-info">
+                                    <div class="poster-title">@ShortTitle(h.Title)</div>
+                                    <div class="poster-meta">
+                                        <span>@(string.IsNullOrWhiteSpace(h.ServerName) ? "Tiếp tục" : h.ServerName)</span>
+                                        <span class="quality-badge">PLAY</span>
+                                    </div>
+                                </div>
+                            </a>
+                            <div class="history-progress"><span></span></div>
+                        </div>
                     }
+                    </div>
+                    <button class="rail-button next" type="button" data-rail-target="historyRail" data-rail-dir="1" aria-label="Sau">&rsaquo;</button>
                 </div>
             </section>
         }
@@ -322,6 +575,90 @@
             }
         </div>
 
+        @if (koreanRail.Any())
+        {
+            <section class="wide-panel">
+                <div class="wide-title">
+                    <h2>Phim <span>Hàn Quốc</span> tập mới</h2>
+                    <a href="/quoc-gia/han-quoc">Xem toàn bộ ›</a>
+                </div>
+                <div class="rail-wrap">
+                    <button class="rail-button prev" type="button" data-rail-target="koreanRail" data-rail-dir="-1" aria-label="Truoc">&lsaquo;</button>
+                    <div class="wide-rail" id="koreanRail" data-rail>
+                    @foreach (var movie in koreanRail)
+                    {
+                        <a class="wide-card" href="/phim/@movie.Slug">
+                            <div class="wide-thumb">
+                                <img src="@ImageUrl(string.IsNullOrWhiteSpace(movie.PosterUrl) ? movie.ThumbUrl : movie.PosterUrl)" alt="@movie.Name" loading="lazy" />
+                                <span class="poster-shade"></span>
+                                <span class="dub-row">
+                                    @if (movie.VietsubEpisodeCount > 0)
+                                    {
+                                        <span class="dub-badge vs">VS. @movie.VietsubEpisodeCount</span>
+                                    }
+                                    @if (movie.ThuyetMinhEpisodeCount > 0)
+                                    {
+                                        <span class="dub-badge tm">TM. @movie.ThuyetMinhEpisodeCount</span>
+                                    }
+                                    @if (movie.VietsubEpisodeCount == 0 && movie.ThuyetMinhEpisodeCount == 0)
+                                    {
+                                        <span class="dub-badge fallback">@EpisodeLabel(movie)</span>
+                                        <span class="dub-badge tm">@LangLabel(movie)</span>
+                                    }
+                                </span>
+                            </div>
+                            <div class="wide-card-title">@ShortTitle(movie.Name, 26)</div>
+                            <div class="wide-card-sub">@ShortTitle(movie.OriginName, 28)</div>
+                        </a>
+                    }
+                    </div>
+                    <button class="rail-button next" type="button" data-rail-target="koreanRail" data-rail-dir="1" aria-label="Sau">&rsaquo;</button>
+                </div>
+            </section>
+        }
+
+        @if (chineseRail.Any())
+        {
+            <section class="wide-panel">
+                <div class="wide-title">
+                    <h2>Phim <span>Trung Qu&#7889;c</span> t&#7853;p m&#7899;i</h2>
+                    <a href="/quoc-gia/trung-quoc">Xem to&#224;n b&#7897; &#8250;</a>
+                </div>
+                <div class="rail-wrap">
+                    <button class="rail-button prev" type="button" data-rail-target="chineseRail" data-rail-dir="-1" aria-label="Truoc">&lsaquo;</button>
+                    <div class="wide-rail" id="chineseRail" data-rail>
+                    @foreach (var movie in chineseRail)
+                    {
+                        <a class="wide-card" href="/phim/@movie.Slug">
+                            <div class="wide-thumb">
+                                <img src="@ImageUrl(string.IsNullOrWhiteSpace(movie.PosterUrl) ? movie.ThumbUrl : movie.PosterUrl)" alt="@movie.Name" loading="lazy" />
+                                <span class="poster-shade"></span>
+                                <span class="dub-row">
+                                    @if (movie.VietsubEpisodeCount > 0)
+                                    {
+                                        <span class="dub-badge vs">VS. @movie.VietsubEpisodeCount</span>
+                                    }
+                                    @if (movie.ThuyetMinhEpisodeCount > 0)
+                                    {
+                                        <span class="dub-badge tm">TM. @movie.ThuyetMinhEpisodeCount</span>
+                                    }
+                                    @if (movie.VietsubEpisodeCount == 0 && movie.ThuyetMinhEpisodeCount == 0)
+                                    {
+                                        <span class="dub-badge fallback">@EpisodeLabel(movie)</span>
+                                        <span class="dub-badge tm">@LangLabel(movie)</span>
+                                    }
+                                </span>
+                            </div>
+                            <div class="wide-card-title">@ShortTitle(movie.Name, 26)</div>
+                            <div class="wide-card-sub">@ShortTitle(movie.OriginName, 28)</div>
+                        </a>
+                    }
+                    </div>
+                    <button class="rail-button next" type="button" data-rail-target="chineseRail" data-rail-dir="1" aria-label="Sau">&rsaquo;</button>
+                </div>
+            </section>
+        }
+
         <section>
             <div class="section-head">
                 <span class="section-mark"></span>
@@ -330,17 +667,29 @@
 
             @if (featured.Any())
             {
-                <div class="featured-row">
+                <div class="rail-wrap">
+                    <button class="rail-button prev" type="button" data-rail-target="featuredRail" data-rail-dir="-1" aria-label="Truoc">&lsaquo;</button>
+                    <div class="featured-row" id="featuredRail" data-rail>
                     @foreach (var movie in featured)
                     {
                         <a class="poster-card" href="/phim/@movie.Slug">
                             <img src="@ImageUrl(movie.ThumbUrl)" alt="@movie.Name" loading="lazy" />
                             <span class="poster-shade"></span>
-                            <span class="label-pill">@(movie.Lang?.Contains("Thuyết", StringComparison.OrdinalIgnoreCase) == true ? "TM" : "VS")</span>
-                            @if (!string.IsNullOrWhiteSpace(movie.EpisodeCurrent))
-                            {
-                                <span class="episode-pill">@movie.EpisodeCurrent</span>
-                            }
+                            <span class="dub-row">
+                                @if (movie.VietsubEpisodeCount > 0)
+                                {
+                                    <span class="dub-badge vs">VS. @movie.VietsubEpisodeCount</span>
+                                }
+                                @if (movie.ThuyetMinhEpisodeCount > 0)
+                                {
+                                    <span class="dub-badge tm">TM. @movie.ThuyetMinhEpisodeCount</span>
+                                }
+                                @if (movie.VietsubEpisodeCount == 0 && movie.ThuyetMinhEpisodeCount == 0)
+                                {
+                                    <span class="dub-badge fallback">@EpisodeLabel(movie)</span>
+                                    <span class="dub-badge tm">@LangLabel(movie)</span>
+                                }
+                            </span>
                             <div class="poster-info">
                                 <div class="poster-title">@ShortTitle(movie.Name)</div>
                                 <div class="poster-meta">
@@ -350,6 +699,8 @@
                             </div>
                         </a>
                     }
+                    </div>
+                    <button class="rail-button next" type="button" data-rail-target="featuredRail" data-rail-dir="1" aria-label="Sau">&rsaquo;</button>
                 </div>
             }
             else
@@ -372,11 +723,21 @@
                         <a class="poster-card" href="/phim/@movie.Slug">
                             <img src="@ImageUrl(movie.ThumbUrl)" alt="@movie.Name" loading="lazy" />
                             <span class="poster-shade"></span>
-                            <span class="label-pill">@(movie.Lang?.Contains("Thuyết", StringComparison.OrdinalIgnoreCase) == true ? "TM" : "VS")</span>
-                            @if (!string.IsNullOrWhiteSpace(movie.EpisodeCurrent))
-                            {
-                                <span class="episode-pill">@movie.EpisodeCurrent</span>
-                            }
+                            <span class="dub-row">
+                                @if (movie.VietsubEpisodeCount > 0)
+                                {
+                                    <span class="dub-badge vs">VS. @movie.VietsubEpisodeCount</span>
+                                }
+                                @if (movie.ThuyetMinhEpisodeCount > 0)
+                                {
+                                    <span class="dub-badge tm">TM. @movie.ThuyetMinhEpisodeCount</span>
+                                }
+                                @if (movie.VietsubEpisodeCount == 0 && movie.ThuyetMinhEpisodeCount == 0)
+                                {
+                                    <span class="dub-badge fallback">@EpisodeLabel(movie)</span>
+                                    <span class="dub-badge tm">@LangLabel(movie)</span>
+                                }
+                            </span>
                             <div class="poster-info">
                                 <div class="poster-title">@ShortTitle(movie.Name)</div>
                                 <div class="poster-meta">
@@ -394,8 +755,21 @@
                             <a class="poster-card" href="/phim/@movie.Slug">
                                 <img src="@ImageUrl(movie.ThumbUrl)" alt="@movie.Name" loading="lazy" />
                                 <span class="poster-shade"></span>
-                                <span class="label-pill">VS</span>
-                                <span class="episode-pill">@movie.EpisodeCurrent</span>
+                                <span class="dub-row">
+                                    @if (movie.VietsubEpisodeCount > 0)
+                                    {
+                                        <span class="dub-badge vs">VS. @movie.VietsubEpisodeCount</span>
+                                    }
+                                    @if (movie.ThuyetMinhEpisodeCount > 0)
+                                    {
+                                        <span class="dub-badge tm">TM. @movie.ThuyetMinhEpisodeCount</span>
+                                    }
+                                    @if (movie.VietsubEpisodeCount == 0 && movie.ThuyetMinhEpisodeCount == 0)
+                                    {
+                                        <span class="dub-badge fallback">@EpisodeLabel(movie)</span>
+                                        <span class="dub-badge tm">@LangLabel(movie)</span>
+                                    }
+                                </span>
                                 <div class="poster-info">
                                     <div class="poster-title">@ShortTitle(movie.Name)</div>
                                     <div class="poster-meta">
@@ -435,3 +809,114 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+<script>
+(() => {
+    const getStep = (rail) => Math.max(rail.clientWidth * 0.82, 220);
+
+    const updateButtons = (rail) => {
+        const wrap = rail.closest('.rail-wrap');
+        if (!wrap) return;
+
+        const prev = wrap.querySelector('[data-rail-dir="-1"]');
+        const next = wrap.querySelector('[data-rail-dir="1"]');
+        const maxLeft = Math.max(0, rail.scrollWidth - rail.clientWidth - 2);
+
+        if (prev) prev.disabled = rail.scrollLeft <= 2;
+        if (next) next.disabled = rail.scrollLeft >= maxLeft;
+    };
+
+    document.querySelectorAll('[data-rail]').forEach((rail) => {
+        let isPointerDown = false;
+        let startX = 0;
+        let startLeft = 0;
+        let moved = false;
+
+        updateButtons(rail);
+        rail.addEventListener('scroll', () => updateButtons(rail), { passive: true });
+        window.addEventListener('resize', () => updateButtons(rail), { passive: true });
+
+        rail.addEventListener('pointerdown', (event) => {
+            if (event.target.closest('.rail-button')) return;
+
+            isPointerDown = true;
+            moved = false;
+            startX = event.clientX;
+            startLeft = rail.scrollLeft;
+            rail.classList.add('is-dragging');
+            rail.setPointerCapture?.(event.pointerId);
+        });
+
+        rail.addEventListener('pointermove', (event) => {
+            if (!isPointerDown) return;
+
+            const deltaX = event.clientX - startX;
+            if (Math.abs(deltaX) > 6) {
+                moved = true;
+            }
+
+            if (moved) {
+                event.preventDefault();
+                rail.scrollLeft = startLeft - deltaX;
+            }
+        });
+
+        const stopDrag = (event) => {
+            if (!isPointerDown) return;
+
+            isPointerDown = false;
+            rail.classList.remove('is-dragging');
+            rail.releasePointerCapture?.(event.pointerId);
+
+            if (moved) {
+                rail.dataset.dragged = '1';
+                window.setTimeout(() => delete rail.dataset.dragged, 80);
+            }
+        };
+
+        rail.addEventListener('pointerup', stopDrag);
+        rail.addEventListener('pointercancel', stopDrag);
+        rail.addEventListener('pointerleave', stopDrag);
+
+        rail.addEventListener('click', (event) => {
+            if (rail.dataset.dragged === '1') {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+        }, true);
+    });
+
+    document.querySelectorAll('[data-rail-target]').forEach((button) => {
+        const rail = document.getElementById(button.dataset.railTarget);
+        if (!rail) return;
+
+        const dir = Number(button.dataset.railDir || 1);
+        let holdTimer = null;
+
+        const move = (smooth = true) => {
+            rail.scrollBy({
+                left: dir * getStep(rail),
+                behavior: smooth ? 'smooth' : 'auto'
+            });
+        };
+
+        const stopHold = () => {
+            if (holdTimer) {
+                clearInterval(holdTimer);
+                holdTimer = null;
+            }
+        };
+
+        button.addEventListener('click', () => move(true));
+        button.addEventListener('pointerdown', () => {
+            stopHold();
+            holdTimer = setInterval(() => move(false), 140);
+        });
+        button.addEventListener('pointerup', stopHold);
+        button.addEventListener('pointerleave', stopHold);
+        button.addEventListener('pointercancel', stopHold);
+    });
+})();
+</script>
+}

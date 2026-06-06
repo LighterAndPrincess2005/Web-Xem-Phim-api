@@ -1,4 +1,7 @@
 # 🎬 LVDKMovie — Hướng dẫn cài đặt A→Z
+cd D:\Downloads\LVDKMovie
+dotnet run --project .\LVDKMovie\LVDKMovie.csproj --urls "http://0.0.0.0:5000"
+192.168.1.8:5000
 
 ## YÊU CẦU HỆ THỐNG
 
@@ -59,7 +62,7 @@ LVDKMovie/
 
 ```bash
 # Mở CMD hoặc PowerShell, vào thư mục project
-cd C:\Projects\LVDKMovie
+cd D:\Downloads\LVDKMovie\LVDKMovie
 
 # Khôi phục các thư viện (chỉ cần làm 1 lần đầu)
 dotnet restore
@@ -68,12 +71,54 @@ dotnet restore
 dotnet run
 ```
 
+Neu dang dung o thu muc ngoai `D:\Downloads\LVDKMovie`, chay lenh nay de khoi loi "Couldn't find a project to run":
+```bash
+dotnet run --project .\LVDKMovie\LVDKMovie.csproj --urls "http://0.0.0.0:5000"
+```
+
 Sau vài giây sẽ thấy:
 ```
 Now listening on: http://localhost:5000
 ```
 
 Mở trình duyệt vào **http://localhost:5000** là xong! 🎉
+
+---
+
+### Chay cho dien thoai / may khac cung Wi-Fi
+
+Cach nhanh nhat: bam double-click file:
+```bat
+RunMovie.bat
+```
+
+Hoac chay bang lenh:
+```bash
+cd D:\Downloads\LVDKMovie\LVDKMovie
+dotnet run --urls "http://0.0.0.0:5000"
+```
+
+Mo tren may dang chay app:
+```text
+http://localhost:5000
+```
+
+Mo tren dien thoai / laptop khac cung Wi-Fi:
+```text
+http://IP-MAY-CHAY-APP:5000
+```
+
+Vi du neu may chay app co IP `192.168.1.8` thi mo:
+```text
+http://192.168.1.8:5000
+```
+
+Xem IP nhanh tren Windows:
+```bat
+ipconfig
+```
+
+Tim dong `IPv4 Address`, lay IP do thay vao link ben tren. Neu may khac khong vao duoc, chay `RunMovie.bat` bang quyen Administrator de tu them rule firewall cho port `5000`.
 
 ---
 

@@ -2,13 +2,6 @@ using System.Text.Json.Serialization;
 
 namespace LVDKMovie.Models;
 
-// ── Home response ──────────────────────────────────────────────
-public class HomeResponse
-{
-    [JsonPropertyName("status")] public bool Status { get; set; }
-    [JsonPropertyName("items")] public List<MovieItem> Items { get; set; } = new();
-}
-
 // ── Movie item (card) ──────────────────────────────────────────
 public class MovieItem
 {
@@ -23,6 +16,8 @@ public class MovieItem
     [JsonPropertyName("type")]      public string Type     { get; set; } = "";
     [JsonPropertyName("lang")]      public string Lang     { get; set; } = "";
     [JsonPropertyName("quality")]   public string Quality  { get; set; } = "";
+    public int VietsubEpisodeCount { get; set; }
+    public int ThuyetMinhEpisodeCount { get; set; }
 }
 
 // ── Movie detail ───────────────────────────────────────────────
@@ -90,21 +85,6 @@ public class SubtitleItem
     [JsonPropertyName("url")] public string Url { get; set; } = "";
     [JsonPropertyName("file")] public string File { get; set; } = "";
     [JsonPropertyName("link")] public string Link { get; set; } = "";
-}
-
-// ── Search / List ──────────────────────────────────────────────
-public class ListResponse
-{
-    [JsonPropertyName("status")]   public bool Status { get; set; }
-    [JsonPropertyName("items")]    public List<MovieItem> Items { get; set; } = new();
-    [JsonPropertyName("paginate")] public Paginate? Paginate { get; set; }
-}
-
-public class Paginate
-{
-    [JsonPropertyName("totalItems")]   public int TotalItems   { get; set; }
-    [JsonPropertyName("totalPages")]   public int TotalPages   { get; set; }
-    [JsonPropertyName("currentPage")]  public int CurrentPage  { get; set; }
 }
 
 // ── Watch ViewModel ────────────────────────────────────────────

@@ -9,6 +9,26 @@
         if (url.StartsWith("http", StringComparison.OrdinalIgnoreCase)) return url;
         return $"https://img.ophim.live/uploads/movies/{url.TrimStart('/')}";
     }
+
+    string EpisodeLabel(MovieItem movie)
+    {
+        if (!string.IsNullOrWhiteSpace(movie.EpisodeCurrent)) return movie.EpisodeCurrent;
+        return movie.Type == "single" ? "PĐ. 1" : "PĐ. ?";
+    }
+
+    string LangLabel(MovieItem movie)
+    {
+        var lang = movie.Lang ?? "";
+        if (lang.Contains("Thuyết", StringComparison.OrdinalIgnoreCase) ||
+            lang.Contains("Thuyet", StringComparison.OrdinalIgnoreCase) ||
+            lang.Contains("Lồng", StringComparison.OrdinalIgnoreCase) ||
+            lang.Contains("Long", StringComparison.OrdinalIgnoreCase))
+        {
+            return "TM";
+        }
+
+        return "VS";
+    }
 }
 
 <div style="max-width:1280px;margin:0 auto;padding:2.5rem 1.25rem;">
@@ -26,13 +46,13 @@
                     <div class="movie-card">
                         <img src="@ImageUrl(movie.ThumbUrl)" alt="@movie.Name" loading="lazy" />
                         <div class="overlay"></div>
-                        @if (!string.IsNullOrEmpty(movie.Quality))
-                        {
-                            <div class="badge">@movie.Quality</div>
-                        }
+                        <div class="stat-row">
+                            <span class="stat-pill episode">@EpisodeLabel(movie)</span>
+                            <span class="stat-pill lang">@LangLabel(movie)</span>
+                        </div>
                         <div class="info">
                             <div class="title">@movie.Name</div>
-                            <div class="sub">@movie.EpisodeCurrent</div>
+                            <div class="sub">@(string.IsNullOrWhiteSpace(movie.Quality) ? movie.Year : movie.Quality)</div>
                         </div>
                     </div>
                 </a>

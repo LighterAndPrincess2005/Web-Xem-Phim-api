@@ -76,6 +76,7 @@
 
 <div class="login-page">
     <form class="login-box" method="post" action="/Account/Login">
+        @Html.AntiForgeryToken()
         <h1 class="login-title">Đăng nhập</h1>
         <p class="login-sub">Tài khoản mặc định: admin / admin</p>
 

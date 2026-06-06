@@ -1,8 +1,12 @@
 @model WatchViewModel
 @{
     ViewData["Title"] = $"{Model.Movie.Name} - {Model.CurrentEpisode} | LVDKMovie";
+    var isVoiceServer = Model.CurrentServer.Contains("Thuyết", StringComparison.OrdinalIgnoreCase) ||
+        Model.CurrentServer.Contains("Thuyet", StringComparison.OrdinalIgnoreCase) ||
+        Model.CurrentServer.Contains("Lồng", StringComparison.OrdinalIgnoreCase) ||
+        Model.CurrentServer.Contains("Long", StringComparison.OrdinalIgnoreCase);
     var useEmbedPlayer = !string.IsNullOrEmpty(Model.EmbedUrl) &&
-        Model.EmbedUrl.Contains("player.phimapi.com", StringComparison.OrdinalIgnoreCase);
+        (isVoiceServer || string.IsNullOrEmpty(Model.M3u8Url));
 
     string ImageUrl(string url)
     {
@@ -33,61 +37,68 @@
     display: block;
     background: #000;
 }
-.ai-voice-bar {
-    max-width: 1100px;
-    margin: 0 auto;
-    border: 1px solid #111;
-    border-top: none;
-    background: #080808;
-    padding: 0.8rem 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    flex-wrap: wrap;
+.skip-intro-btn {
+    position: absolute;
+    right: 1rem;
+    bottom: 4.25rem;
+    z-index: 4;
+    display: none;
+    border: 1px solid rgba(212,175,55,0.55);
+    background: rgba(7,10,16,0.92);
+    color: var(--neon);
+    border-radius: 6px;
+    padding: 0.7rem 1rem;
+    font-family: 'Urbanist', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.45);
 }
-.ai-voice-toggle {
+.skip-intro-btn:hover {
+    background: var(--neon);
+    color: #111;
+}
+.skip-intro-btn.is-visible {
     display: inline-flex;
     align-items: center;
-    gap: 0.65rem;
-    color: #ddd;
-    font-size: 0.85rem;
-    font-weight: 800;
-    cursor: pointer;
-    user-select: none;
+    gap: 0.45rem;
 }
-.ai-voice-toggle input { display: none; }
-.ai-voice-switch {
-    width: 44px;
-    height: 24px;
-    border: 1px solid #333;
-    border-radius: 999px;
-    background: #171717;
-    position: relative;
-    transition: all 0.2s;
-}
-.ai-voice-switch::after {
-    content: "";
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: #777;
+.tap-control-layer {
     position: absolute;
-    top: 2px;
-    left: 3px;
-    transition: all 0.2s;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 42px;
+    z-index: 3;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    touch-action: manipulation;
 }
-.ai-voice-toggle input:checked + .ai-voice-switch {
-    border-color: var(--neon);
-    background: rgba(222,255,154,0.14);
+.tap-zone {
+    border: none;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
 }
-.ai-voice-toggle input:checked + .ai-voice-switch::after {
-    left: 21px;
-    background: var(--neon);
+.tap-hint {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    z-index: 5;
+    transform: translate(-50%, -50%) scale(0.96);
+    border-radius: 999px;
+    padding: 0.7rem 1rem;
+    background: rgba(7,10,16,0.82);
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 900;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.18s, transform 0.18s;
 }
-.ai-voice-status {
-    color: var(--muted);
-    font-size: 0.78rem;
+.tap-hint.is-visible {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
 }
 .ep-btn-active {
     border-color: var(--neon) !important;
@@ -138,6 +149,13 @@
                         <track id="movieSubtitleTrack" kind="subtitles" srclang="vi" label="Tiếng Việt" src="@Model.SubtitleUrl" default />
                     }
                 </video>
+                <div class="tap-control-layer" id="tapControlLayer" aria-hidden="true">
+                    <button class="tap-zone" type="button" data-zone="left" tabindex="-1"></button>
+                    <button class="tap-zone" type="button" data-zone="center" tabindex="-1"></button>
+                    <button class="tap-zone" type="button" data-zone="right" tabindex="-1"></button>
+                </div>
+                <div class="tap-hint" id="tapHint"></div>
+                <button class="skip-intro-btn" id="skipIntroBtn" type="button">Bỏ qua mở đầu</button>
             }
             else if (!string.IsNullOrEmpty(Model.EmbedUrl))
             {
@@ -157,15 +175,6 @@
                 </div>
             }
         </div>
-        <div class="ai-voice-bar">
-            <label class="ai-voice-toggle" title="Bot đọc dòng phụ đề hiện tại bằng Web Speech API">
-                <input type="checkbox" id="aiVoiceToggle" />
-                <span class="ai-voice-switch" aria-hidden="true"></span>
-                <span>Thuyết minh AI</span>
-            </label>
-            <span class="ai-voice-status" id="aiVoiceStatus">Tắt</span>
-        </div>
-
         <!-- SERVER + EPISODE SELECTOR -->
         <div style="background:#0a0a0a;border:1px solid #111;border-top:none;padding:1.25rem;">
 
@@ -247,198 +256,109 @@ function showServer(name, btn) {
 
 (function () {
     const video = document.getElementById('movieVideo');
-    const toggle = document.getElementById('aiVoiceToggle');
-    const status = document.getElementById('aiVoiceStatus');
+    const skipIntroBtn = document.getElementById('skipIntroBtn');
+    const tapLayer = document.getElementById('tapControlLayer');
+    const tapHint = document.getElementById('tapHint');
     const m3u8Url = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.M3u8Url));
-    const subtitleUrl = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SubtitleUrl));
+    const introEndSeconds = 100;
+    let skipIntroTimer = null;
+    let tapTimer = null;
+    let hintTimer = null;
 
-    let subtitles = [];
-    let botEnabled = false;
-    let selectedVoice = null;
-    let lastSpokenSubtitle = null;
-    let subtitleStatusMessage = subtitleUrl
-        ? 'Đang tải phụ đề...'
-        : 'Tập này chưa có phụ đề dạng text (.srt/.vtt) để bot đọc';
+    if (!video || !m3u8Url) return;
 
-    if (!toggle || !status) return;
-
-    if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
-        toggle.disabled = true;
-        status.textContent = 'Trình duyệt không hỗ trợ đọc giọng nói';
-        return;
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = m3u8Url;
+    } else if (window.Hls && window.Hls.isSupported()) {
+        const hls = new window.Hls();
+        hls.loadSource(m3u8Url);
+        hls.attachMedia(video);
     }
 
-    if (!video) {
-        toggle.disabled = true;
-        status.textContent = 'Bot cần player video trực tiếp để lấy thời gian phát';
-        return;
+    if (!skipIntroBtn) return;
+
+    skipIntroBtn.addEventListener('click', function () {
+        video.currentTime = introEndSeconds;
+        hideSkipIntro();
+    });
+
+    video.addEventListener('play', showSkipIntro);
+    video.addEventListener('playing', showSkipIntro);
+
+    function showSkipIntro() {
+        if (video.currentTime >= introEndSeconds) return;
+
+        skipIntroBtn.classList.add('is-visible');
+        clearTimeout(skipIntroTimer);
+        skipIntroTimer = setTimeout(hideSkipIntro, 10000);
     }
 
-    setupVideoPlayer();
-    loadVoices();
-    loadSubtitles();
+    video.addEventListener('timeupdate', function () {
+        if (video.currentTime >= introEndSeconds) {
+            hideSkipIntro();
+        }
+    });
 
-    toggle.addEventListener('change', function () {
-        botEnabled = toggle.checked;
-        lastSpokenSubtitle = null;
+    if (tapLayer) {
+        tapLayer.addEventListener('click', function (event) {
+            const zone = event.target?.dataset?.zone;
+            if (!zone) return;
 
-        if (!botEnabled) {
-            stopSpeaking();
-            status.textContent = 'Tắt';
+            if (event.detail >= 2) {
+                clearTimeout(tapTimer);
+                handleDoubleTap(zone);
+                return;
+            }
+
+            clearTimeout(tapTimer);
+            tapTimer = setTimeout(function () {}, 230);
+        });
+    }
+
+    function handleDoubleTap(zone) {
+        if (zone === 'left') {
+            video.currentTime = Math.max(0, video.currentTime - 5);
+            showTapHint('⟲ 5s');
             return;
         }
 
-        status.textContent = subtitles.length > 0 ? 'Đang bật' : subtitleStatusMessage;
-        speakCurrentSubtitle();
-    });
-
-    video.addEventListener('timeupdate', speakCurrentSubtitle);
-    video.addEventListener('pause', function () {
-        // Khi phim pause, tạm dừng câu đang đọc để không lệch với hình.
-        window.speechSynthesis.pause();
-    });
-    video.addEventListener('play', function () {
-        if (!botEnabled) return;
-        window.speechSynthesis.resume();
-        speakCurrentSubtitle();
-    });
-    video.addEventListener('seeking', function () {
-        // Khi tua phim, cho phép đọc lại dòng subtitle tương ứng mốc mới.
-        lastSpokenSubtitle = null;
-        stopSpeaking();
-    });
-    video.addEventListener('ended', stopSpeaking);
-    window.addEventListener('beforeunload', stopSpeaking);
-
-    function setupVideoPlayer() {
-        if (!m3u8Url) return;
-
-        if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            video.src = m3u8Url;
+        if (zone === 'right') {
+            const maxTime = Number.isFinite(video.duration) ? video.duration : video.currentTime + 5;
+            video.currentTime = Math.min(maxTime, video.currentTime + 5);
+            showTapHint('5s ⟳');
             return;
         }
 
-        if (window.Hls && window.Hls.isSupported()) {
-            const hls = new window.Hls();
-            hls.loadSource(m3u8Url);
-            hls.attachMedia(video);
+        if (zone === 'center') {
+            togglePlay();
+        }
+    }
+
+    function togglePlay() {
+        if (video.paused) {
+            video.play();
+            showTapHint('▶');
             return;
         }
 
-        status.textContent = 'Trình duyệt không hỗ trợ HLS';
+        video.pause();
+        showTapHint('Ⅱ');
     }
 
-    async function loadSubtitles() {
-        if (!subtitleUrl) {
-            status.textContent = subtitleStatusMessage;
-            return;
-        }
+    function showTapHint(text) {
+        if (!tapHint) return;
 
-        try {
-            const response = await fetch(subtitleUrl);
-            if (!response.ok) throw new Error('Không tải được phụ đề');
-
-            const subtitleText = await response.text();
-            subtitles = parseSubtitle(subtitleText);
-            subtitleStatusMessage = subtitles.length > 0
-                ? `Đã tải ${subtitles.length} dòng phụ đề`
-                : 'File phụ đề không có dòng đọc được';
-            status.textContent = botEnabled && subtitles.length > 0 ? 'Đang bật' : subtitleStatusMessage;
-        } catch (error) {
-            subtitles = [];
-            subtitleStatusMessage = 'Không tải được phụ đề dạng text cho tập này';
-            status.textContent = subtitleStatusMessage;
-        }
+        tapHint.textContent = text;
+        tapHint.classList.add('is-visible');
+        clearTimeout(hintTimer);
+        hintTimer = setTimeout(function () {
+            tapHint.classList.remove('is-visible');
+        }, 650);
     }
 
-    function parseSubtitle(content) {
-        // Parser dùng chung cho .srt và .vtt: lấy mốc thời gian rồi gom text ở dưới.
-        const normalized = content
-            .replace(/\r/g, '')
-            .replace(/^\uFEFF/, '')
-            .split('\n')
-            .filter(line => !/^WEBVTT($|\s)/i.test(line.trim()))
-            .join('\n');
-
-        const blocks = normalized.split(/\n{2,}/);
-
-        return blocks.map(block => {
-            const lines = block.split('\n').map(line => line.trim()).filter(Boolean);
-            const timeIndex = lines.findIndex(line => line.includes('-->'));
-            if (timeIndex === -1) return null;
-
-            const timeLine = lines[timeIndex];
-            const parts = timeLine.split('-->');
-            const start = parseSubtitleTime(parts[0]);
-            const end = parseSubtitleTime(parts[1]);
-            const text = lines
-                .slice(timeIndex + 1)
-                .join(' ')
-                .replace(/<[^>]*>/g, '')
-                .replace(/\{\\.*?\}/g, '')
-                .replace(/\s+/g, ' ')
-                .trim();
-
-            if (!Number.isFinite(start) || !Number.isFinite(end) || !text) return null;
-            return { start, end, text };
-        }).filter(Boolean);
-    }
-
-    function parseSubtitleTime(value) {
-        const cleanValue = value.trim().split(/\s+/)[0].replace(',', '.');
-        const parts = cleanValue.split(':').map(Number);
-
-        if (parts.length === 3) {
-            return parts[0] * 3600 + parts[1] * 60 + parts[2];
-        }
-
-        if (parts.length === 2) {
-            return parts[0] * 60 + parts[1];
-        }
-
-        return Number.NaN;
-    }
-
-    function speakCurrentSubtitle() {
-        if (!botEnabled || video.paused || subtitles.length === 0) return;
-
-        const currentTime = video.currentTime;
-        const currentSubtitle = subtitles.find(sub => currentTime >= sub.start && currentTime <= sub.end);
-
-        if (!currentSubtitle) return;
-
-        const subtitleKey = `${currentSubtitle.start}-${currentSubtitle.end}-${currentSubtitle.text}`;
-        if (subtitleKey === lastSpokenSubtitle) return;
-
-        lastSpokenSubtitle = subtitleKey;
-        stopSpeaking();
-        speakText(currentSubtitle.text);
-    }
-
-    function speakText(text) {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'vi-VN';
-        utterance.rate = 1.0;
-
-        if (selectedVoice) {
-            utterance.voice = selectedVoice;
-        }
-
-        window.speechSynthesis.speak(utterance);
-    }
-
-    function stopSpeaking() {
-        window.speechSynthesis.cancel();
-    }
-
-    function loadVoices() {
-        const chooseVoice = function () {
-            const voices = window.speechSynthesis.getVoices();
-            selectedVoice = voices.find(voice => voice.lang && voice.lang.toLowerCase().startsWith('vi')) || null;
-        };
-
-        chooseVoice();
-        window.speechSynthesis.onvoiceschanged = chooseVoice;
+    function hideSkipIntro() {
+        skipIntroBtn.classList.remove('is-visible');
+        clearTimeout(skipIntroTimer);
     }
 })();
 </script>
